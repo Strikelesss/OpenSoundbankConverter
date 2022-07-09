@@ -1,10 +1,8 @@
 #include "E4BSampleReplacer.h"
-
-#include <fstream>
-#include <tchar.h>
-#include "E4BFunctions.h"
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
+#include <fstream>
+#include <tchar.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -30,11 +28,11 @@ bool E4BSampleReplacer::CreateResources(const HWND hwnd)
 	
 	D3D_FEATURE_LEVEL featureLevel;
 	constexpr D3D_FEATURE_LEVEL featureLevelArray[2]{D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0,};
-	if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0u, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
+	if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0u, featureLevelArray, 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
 		m_device.GetAddressOf(), &featureLevel, m_deviceContext.GetAddressOf()) != S_OK) { return false; }
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer(nullptr);
-	if(!FAILED(m_swapchain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer))))
+	if(!FAILED(m_swapchain->GetBuffer(0u, IID_PPV_ARGS(&pBackBuffer))))
 	{
 		m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv);
 
@@ -48,6 +46,7 @@ bool E4BSampleReplacer::CreateResources(const HWND hwnd)
 
 		ImGui_ImplWin32_Init(hwnd);
 		ImGui_ImplDX11_Init(m_device.Get(), m_deviceContext.Get());
+		ImGui::GetIO().IniFilename = nullptr;
 		return true;
 	}
 
