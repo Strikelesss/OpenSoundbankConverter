@@ -1,4 +1,4 @@
-#include "BinaryReader.h"
+#include "Header/BinaryReader.h"
 #include <fstream>
 
 bool BinaryReader::readFile(const std::filesystem::path& file)

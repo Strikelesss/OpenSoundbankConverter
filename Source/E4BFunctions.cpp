@@ -1,9 +1,9 @@
-#include "E4BFunctions.h"
-#include "E4Preset.h"
-#include "E4BVariables.h"
-#include "WAVDefinitions.h"
-#include "Chunk.h"
-#include "E3Sample.h"
+#include "Header/E4BFunctions.h"
+#include "Header/E4Preset.h"
+#include "Header/E4BVariables.h"
+#include "Header/WAVDefinitions.h"
+#include "Header/Chunk.h"
+#include "Header/E3Sample.h"
 
 bool E4BFunctions::replaceStringOccurrance(std::string& str, const std::string& from, const std::string& to)
 {

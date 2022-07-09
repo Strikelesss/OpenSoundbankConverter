@@ -106,7 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui;$(SolutionDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,7 +124,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui;$(SolutionDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -135,7 +135,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BinaryReader.cpp" />
     <ClCompile Include="Dependencies\ImGui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="Dependencies\ImGui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui.cpp" />
@@ -143,13 +142,12 @@
     <ClCompile Include="Dependencies\ImGui\imgui_tables.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="Dependencies\ImGui\misc\cpp\imgui_stdlib.cpp" />
-    <ClCompile Include="E4BFunctions.cpp" />
-    <ClCompile Include="E4BSampleReplacer.cpp" />
-    <ClCompile Include="WAVDefinitions.cpp" />
+    <ClCompile Include="Source\BinaryReader.cpp" />
+    <ClCompile Include="Source\E4BFunctions.cpp" />
+    <ClCompile Include="Source\E4BSampleReplacer.cpp" />
+    <ClCompile Include="Source\WAVDefinitions.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BinaryReader.h" />
-    <ClInclude Include="Chunk.h" />
     <ClInclude Include="Dependencies\ImGui\backends\imgui_impl_dx11.h" />
     <ClInclude Include="Dependencies\ImGui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Dependencies\ImGui\imconfig.h" />
@@ -160,12 +158,14 @@
     <ClInclude Include="Dependencies\ImGui\imstb_truetype.h" />
     <ClInclude Include="Dependencies\ImGui\misc\cpp\imgui_stdlib.h" />
     <ClInclude Include="Dependencies\ImGui\misc\freetype\imgui_freetype.h" />
-    <ClInclude Include="E3Sample.h" />
-    <ClInclude Include="E4BFunctions.h" />
-    <ClInclude Include="E4BSampleReplacer.h" />
-    <ClInclude Include="E4BVariables.h" />
-    <ClInclude Include="E4Preset.h" />
-    <ClInclude Include="WAVDefinitions.h" />
+    <ClInclude Include="Header\BinaryReader.h" />
+    <ClInclude Include="Header\Chunk.h" />
+    <ClInclude Include="Header\E3Sample.h" />
+    <ClInclude Include="Header\E4BFunctions.h" />
+    <ClInclude Include="Header\E4BSampleReplacer.h" />
+    <ClInclude Include="Header\E4BVariables.h" />
+    <ClInclude Include="Header\E4Preset.h" />
+    <ClInclude Include="Header\WAVDefinitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

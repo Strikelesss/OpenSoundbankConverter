@@ -1,4 +1,4 @@
-#include "WAVDefinitions.h"
+#include "Header/WAVDefinitions.h"
 #include <mmreg.h>
 
 HRESULT WAVDefinitions::FindChunk(const HANDLE hFile, const DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition)
