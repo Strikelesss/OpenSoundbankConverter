@@ -7,5 +7,5 @@ struct E3Sample final
 	unsigned int sample_rate;
 	unsigned int format;
 	unsigned int more_parameters[E4BVariables::MORE_SAMPLE_PARAMETERS];
-	short int frames[];
+	//short int frames[];
 };

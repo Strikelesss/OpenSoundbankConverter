@@ -247,8 +247,6 @@ struct E4Voice final
 	unsigned char m_filterFrequency = 0;
 	std::array<char, 237> m_possibleRedundantG{};
 	unsigned char m_originalKey = 0;
-
-	char m_data[];
 };
 
 struct E4Preset final
@@ -259,7 +257,6 @@ struct E4Preset final
 	std::array<char, 3> m_possibleRedundantA{};
 	unsigned char m_numVoices = 0;
 	std::array<char, 53> m_possibleRedundantB{};
-	char m_data[];
 };
 
 struct E4Emst final
@@ -309,7 +306,7 @@ struct E4VoiceResult final
 
 struct E4PresetResult final
 {
-	explicit E4PresetResult(const std::string name) : m_name(name) {}
+	explicit E4PresetResult(std::string name) : m_name(std::move(name)) {}
 	[[nodiscard]] const std::vector<E4VoiceResult>& GetVoices() const { return m_voices; }
 	[[nodiscard]] const std::string& GetName() const { return m_name; }
 
