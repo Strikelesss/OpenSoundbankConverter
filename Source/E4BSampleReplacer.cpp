@@ -3,10 +3,11 @@
 #include "backends/imgui_impl_win32.h"
 #include <fstream>
 #include <tchar.h>
+#include <ShlObj_core.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-bool E4BSampleReplacer::CreateResources(const HWND hwnd)
+bool E4BSampleReplacer::CreateResources()
 {
 	DXGI_SWAP_CHAIN_DESC sd;
 	ZeroMemory(&sd, sizeof(sd));
@@ -18,7 +19,7 @@ bool E4BSampleReplacer::CreateResources(const HWND hwnd)
 	sd.BufferDesc.RefreshRate.Denominator = 1u;
 	sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.OutputWindow = hwnd;
+	sd.OutputWindow = m_hwnd;
 	sd.SampleDesc.Count = 1u;
 	sd.SampleDesc.Quality = 0u;
 	sd.Windowed = TRUE;
@@ -36,15 +37,15 @@ bool E4BSampleReplacer::CreateResources(const HWND hwnd)
 	{
 		m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv);
 
-		ShowWindow(hwnd, SW_SHOWDEFAULT);
-		UpdateWindow(hwnd);
+		ShowWindow(m_hwnd, SW_SHOWDEFAULT);
+		UpdateWindow(m_hwnd);
 
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
 		ImGui::StyleColorsDark();
 
-		ImGui_ImplWin32_Init(hwnd);
+		ImGui_ImplWin32_Init(m_hwnd);
 		ImGui_ImplDX11_Init(m_device.Get(), m_deviceContext.Get());
 		ImGui::GetIO().IniFilename = nullptr;
 		return true;
@@ -160,6 +161,26 @@ void E4BSampleReplacer::Render()
 		}
 
 		if(ImGui::Button("Refresh Files")) { RefreshFiles(); }
+		if (ImGui::Button("Change Path"))
+		{
+			BROWSEINFO bInfo{};
+			bInfo.hwndOwner = m_hwnd;
+			bInfo.pidlRoot = nullptr;
+			bInfo.lpszTitle = _T("Select a folder");
+			bInfo.ulFlags = 0;
+			bInfo.lpfn = nullptr;
+			bInfo.lParam = 0;
+			bInfo.iImage = -1;
+
+			const LPITEMIDLIST lpItem(SHBrowseForFolder(&bInfo));
+			if (lpItem != nullptr)
+			{
+				std::array<TCHAR, MAX_PATH> filename{};
+				SHGetPathFromIDList(lpItem, filename.data());
+				m_currentSearchPath = std::filesystem::path(filename.data());
+				RefreshFiles();
+			}
+		}
 
 		ImGui::End();
 	}
@@ -175,16 +196,19 @@ void E4BSampleReplacer::Render()
 void E4BSampleReplacer::RefreshFiles()
 {
 	m_bankFiles.clear();
-	const auto bankLocation(std::filesystem::current_path().append("temp"));
-
-	for (const auto& it : std::filesystem::recursive_directory_iterator(bankLocation))
+	if (exists(m_currentSearchPath))
 	{
-		if (it.exists() && it.is_regular_file())
+		for (const auto& it : std::filesystem::recursive_directory_iterator(m_currentSearchPath))
 		{
-			const auto& path(it.path());
-			const auto ext(path.extension().string());
-			if (ext.length() == EMU4_FILE_EXT_A.length() && (std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_A.begin(), EMU4_FILE_EXT_A.end())
-				|| std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_B.begin(), EMU4_FILE_EXT_B.end()))) { m_bankFiles.emplace_back(path); }
+			if (it.exists() && it.is_regular_file())
+			{
+				const auto& path(it.path());
+				const auto ext(path.extension().string());
+				if (ext.length() == EMU4_FILE_EXT_A.length() && (std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_A.begin(), EMU4_FILE_EXT_A.end())
+					|| std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_B.begin(), EMU4_FILE_EXT_B.end()))) {
+					m_bankFiles.emplace_back(path);
+				}
+			}
 		}
 	}
 }
@@ -194,14 +218,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	const WNDCLASSEX wc{ sizeof(WNDCLASSEX), CS_CLASSDC, E4BSampleReplacer::WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("test"), nullptr};
     RegisterClassEx(&wc);
 
-    const HWND hwnd(CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL));
+    E4BSampleReplacer::m_hwnd = CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL);
 
-    if (!E4BSampleReplacer::CreateResources(hwnd))
+    if (!E4BSampleReplacer::CreateResources())
     {
         UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
     }
 
+	E4BSampleReplacer::m_currentSearchPath = std::filesystem::current_path();
 	E4BSampleReplacer::RefreshFiles();
 
 	bool keepRunning(true);
@@ -223,7 +248,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
-    DestroyWindow(hwnd);
+    DestroyWindow(E4BSampleReplacer::m_hwnd);
     UnregisterClass(wc.lpszClassName, wc.hInstance);
 	return 0;
 

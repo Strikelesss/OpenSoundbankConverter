@@ -12,7 +12,7 @@ namespace E4BSampleReplacer
 	constexpr std::string_view EMU4_FILE_EXT_B = ".e4b";
 	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
 
-	[[nodiscard]] bool CreateResources(HWND hwnd);
+	[[nodiscard]] bool CreateResources();
 	void Render();
 	void RefreshFiles();
 
@@ -25,8 +25,10 @@ namespace E4BSampleReplacer
 	inline float m_currentWindowSizeX = 0.f;
 	inline float m_currentWindowSizeY = 0.f;
 
+	inline HWND m_hwnd;
 	inline E4Result m_currentResult;
 	inline std::vector<std::filesystem::path> m_bankFiles{};
 	inline bool m_isBankOpened = false;
 	inline std::filesystem::path m_openedBank;
+	inline std::filesystem::path m_currentSearchPath;
 }
