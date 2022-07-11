@@ -5,6 +5,8 @@
 #include <tchar.h>
 #include <ShlObj_core.h>
 
+#include "Header/BankConverter.h"
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 bool E4BSampleReplacer::CreateResources()
@@ -92,8 +94,10 @@ void E4BSampleReplacer::Render()
 								if (ImGui::TreeNode(std::string("Voice #" + std::to_string(voiceIndex)).c_str()))
 								{
 									const auto& zoneRange(voice.GetZoneRange());
-									ImGui::Text("Original Key: %s", PresetDefinitions::GetMIDINoteFromKey(voice.GetOriginalKey()).c_str());
-									ImGui::Text("Zone Range: %s-%s", PresetDefinitions::GetMIDINoteFromKey(zoneRange.first).c_str(), PresetDefinitions::GetMIDINoteFromKey(zoneRange.second).c_str());
+									const auto& velRange(voice.GetVelocityRange());
+									ImGui::Text("Original Key: %s", VoiceDefinitions::GetMIDINoteFromKey(voice.GetOriginalKey()).c_str());
+									ImGui::Text("Zone Range: %s-%s", VoiceDefinitions::GetMIDINoteFromKey(zoneRange.first).c_str(), VoiceDefinitions::GetMIDINoteFromKey(zoneRange.second).c_str());
+									ImGui::Text("Velocity Range: %u-%u", velRange.first, velRange.second);
 									ImGui::Text("Filter Type: %s", voice.GetFilterType().data());
 									ImGui::Text("Filter Frequency: %d", voice.GetFilterFrequency());
 									ImGui::Text("Pan: %d", voice.GetPan());
@@ -114,6 +118,40 @@ void E4BSampleReplacer::Render()
 					}
 
 					ImGui::TreePop();
+				}
+
+				if (ImGui::TreeNode("Samples"))
+				{
+					int32_t sampleIndex(0u);
+					for(const auto& sample : m_currentResult.GetSamples())
+					{
+						ImGui::PushID(sampleIndex);
+						if (ImGui::TreeNode(sample.m_sampleName.c_str()))
+						{
+							ImGui::Text("Sample Rate: %u", sample.m_sampleRate);
+							ImGui::Text("Loop Start: %u", sample.m_loopStart);
+							ImGui::Text("Loop End: %u", sample.m_loopEnd);
+							ImGui::Text("Loop: %d", sample.m_isLooping);
+							ImGui::Text("Release: %d", sample.m_isReleasing);
+							ImGui::Text("Sample Size: %zd", sample.m_sampleData.size());
+
+							ImGui::TreePop();
+						}
+
+						ImGui::PopID();
+						++sampleIndex;
+					}
+
+					ImGui::TreePop();
+				}
+
+				if(ImGui::Button("Convert To SF2"))
+				{
+					constexpr BankConverter converter;
+					if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string()))
+					{
+						OutputDebugStringA("Successfully converted to SF2! \n");
+					}
 				}
 
                 ImGui::EndPopup();

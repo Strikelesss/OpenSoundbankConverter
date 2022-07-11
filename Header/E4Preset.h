@@ -2,7 +2,7 @@
 #include "E4BFunctions.h"
 #include "E4BVariables.h"
 
-namespace PresetDefinitions
+namespace VoiceDefinitions
 {
 	constexpr double MAX_FREQUENCY_20000 = 9.90348755253612804;
 	constexpr double MIN_FREQUENCY_57 = 4.04305126783455015;
@@ -154,43 +154,25 @@ namespace PresetDefinitions
 		}
 	}
 
-	[[nodiscard]] inline bool GetFilterTypeFromByte(const unsigned char b, std::string_view& outType)
+	[[nodiscard]] inline std::string_view GetFilterTypeFromByte(const uint8_t b)
 	{
-		const auto byteToInt(static_cast<unsigned int>(b));
+		const auto byteToInt(static_cast<uint32_t>(b));
 
 		// TODO: more conversions
 		switch(byteToInt)
 		{
-			case 127u: { outType = E4BVariables::filterTypes[0]; return true; }
-			case 0u: { outType = E4BVariables::filterTypes[2]; return true; }
-			case 1u: { outType = E4BVariables::filterTypes[1]; return true; }
-			case 157u: { outType = E4BVariables::filterTypes[49]; return true; }
-			default:{ return false;}
+			case 127u: { return E4BVariables::filterTypes[0]; }
+			case 0u: { return E4BVariables::filterTypes[2]; }
+			case 1u: { return E4BVariables::filterTypes[1]; }
+			case 157u: { return E4BVariables::filterTypes[49]; }
+			default:{ return "null"; }
 		}
-
-		/*
-		if (byteToInt != 127)
-		{
-			if (byteToInt > 0 && byteToInt < E4BVariables::FILTER_TYPE_COUNT)
-			{
-				outType = E4BVariables::filterTypes[byteToInt];
-				return true;
-			}
-		}
-		else
-		{
-			outType = E4BVariables::filterTypes[0];
-			return true;
-		}
-
-		return false;
-		*/
 	}
 
-	[[nodiscard]] inline int ConvertByteToFilterFrequency(const std::uint8_t b)
+	[[nodiscard]] inline uint16_t ConvertByteToFilterFrequency(const std::uint8_t b)
 	{
 		const double t(static_cast<double>(b) / 255.);
-		return static_cast<int>(std::round(std::exp(t * (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) + MIN_FREQUENCY_57)));
+		return static_cast<uint16_t>(std::round(std::exp(t * (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) + MIN_FREQUENCY_57)));
 	}
 
 	[[nodiscard]] inline double ConvertByteToFineTune(const std::int8_t b)
@@ -200,53 +182,102 @@ namespace PresetDefinitions
 		return 1.562666666666 * b;
 	}
 
-	[[nodiscard]] inline int ConvertByteToVolume(const std::uint8_t b)
+	[[nodiscard]] inline double ConvertByteToFilterQ(const std::uint8_t b)
 	{
-		return static_cast<char>(b);
+		// 127 = 100
+		// 126 = 99.2
+		// 125 = 98.4
+		// 62 = 48.8
+		// 29 = 22.8
+		// 19 = 15
+		// 5 = 4.7
+		// 1 = 0.8
+		// 0 = 0
+
+		// TODO: calculate filter Q
+		return 0.785947461 * b + 0.17062;
 	}
 }
 
-constexpr auto TOTAL_VOICE_EXTRACTION_SIZE = 306;
+struct E4VoiceEndData final
+{
+	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
+	{
+		return std::make_pair(static_cast<uint8_t>(m_lowZone),
+			static_cast<uint8_t>(m_highZone));
+	}
+
+	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
+	[[nodiscard]] uint8_t GetOriginalKey() const { return m_originalKey; }
+
+	uint8_t m_lowZone = 0ui8;
+	std::array<int8_t, 2> m_possibleRedundant1{};
+	uint8_t m_highZone = 0ui8;
+	std::array<int8_t, 5> m_possibleRedundant2{};
+	uint8_t m_sampleIndex = 0ui8;
+	std::array<int8_t, 2> m_possibleRedundant3{};
+	uint8_t m_originalKey = 0ui8;
+	std::array<int8_t, 9> m_possibleRedundant4{};
+};
 
 struct E4Voice final
 {
-	[[nodiscard]] std::pair<uint32_t, uint32_t> GetZoneRange() const
+	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
-		return std::make_pair(static_cast<uint32_t>(m_lowZone),
-			static_cast<uint32_t>(m_highZone));
+		return std::make_pair(static_cast<uint8_t>(m_lowZone),
+			static_cast<uint8_t>(m_highZone));
 	}
 
+	[[nodiscard]] std::pair<uint8_t, uint8_t> GetVelocityRange() const
+	{
+		return std::make_pair(m_minVelocity, m_maxVelocity);
+	}
+
+	// release values:
+	// 0 = 0
+	// 59 = 1.976
+	// 84 = 8.045
+	// 97 = 16.872
+	// 111 = 40.119
+	// 120 = 79.558
+	// 127 = 163.60
+
 	// todo: right source side for voice processing
-	// todo: Q% (present in flys alan)
-	// todo: classic response
 	// todo: attack/release/etc times
-	// todo: chorus
 
-	[[nodiscard]] uint32_t GetOriginalKey() const { return m_originalKey; }
-	[[nodiscard]] int GetFilterFrequency() const { return PresetDefinitions::ConvertByteToFilterFrequency(m_filterFrequency); }
-	[[nodiscard]] int GetPan() const { return m_pan; }
-	[[nodiscard]] int GetVolume() const { return PresetDefinitions::ConvertByteToVolume(m_volume); }
-	[[nodiscard]] double GetFineTune() const { return PresetDefinitions::ConvertByteToFineTune(m_fineTune); }
-	[[nodiscard]] bool GetFilterType(std::string_view& outType) const { return PresetDefinitions::GetFilterTypeFromByte(m_filterType, outType); }
+	[[nodiscard]] uint8_t GetChorusWidth() const { return m_chorusWidth; }
+	[[nodiscard]] uint8_t GetChorusAmount() const { return m_chorusAmount; }
+	[[nodiscard]] uint16_t GetFilterFrequency() const { return VoiceDefinitions::ConvertByteToFilterFrequency(m_filterFrequency); }
+	[[nodiscard]] int8_t GetPan() const { return m_pan; }
+	[[nodiscard]] int8_t GetVolume() const { return static_cast<int8_t>(m_volume); }
+	[[nodiscard]] double GetFineTune() const { return VoiceDefinitions::ConvertByteToFineTune(m_fineTune); }
+	[[nodiscard]] double GetFilterQ() const { return VoiceDefinitions::ConvertByteToFilterQ(m_filterQ); }
+	[[nodiscard]] std::string_view GetFilterType() const { return VoiceDefinitions::GetFilterTypeFromByte(m_filterType); }
 
-	std::array<char, 9> m_possibleRedundantA{};
-	std::array<char, 2> m_totalVoiceSize{};
-	std::array<char, 10> m_possibleRedundantB{};
-	unsigned char m_lowZone = 0;
-	unsigned char m_lowFade = 0;
-	unsigned char m_highFade = 0;
-	unsigned char m_highZone = 0;
-	std::array<char, 18> m_possibleRedundantC{};
-	char m_fineTune = 0;
-	std::array<char, 17> m_possibleRedundantD{};
-	unsigned char m_volume = 0;
-	char m_pan = 0;
-	std::array<char, 2> m_possibleRedundantE{};
-	unsigned char m_filterType = 0;
-	char m_possibleRedundantF = 0;
-	unsigned char m_filterFrequency = 0;
-	std::array<char, 237> m_possibleRedundantG{};
-	unsigned char m_originalKey = 0;
+	std::array<int8_t, 9> m_possibleRedundant1{};
+	std::array<int8_t, 2> m_totalVoiceSize{};
+	std::array<int8_t, 10> m_possibleRedundant2{};
+	uint8_t m_lowZone = 0ui8;
+	uint8_t m_lowFade = 0ui8;
+	uint8_t m_highFade = 0ui8;
+	uint8_t m_highZone = 0ui8;
+	uint8_t m_minVelocity = 0ui8;
+	std::array<int8_t, 2> m_possibleRedundant3{};
+	uint8_t m_maxVelocity = 0ui8;
+	std::array<int8_t, 14> m_possibleRedundant4{};
+	int8_t m_fineTune = 0i8;
+	std::array<int8_t, 4> m_possibleRedundant5{};
+	int8_t m_chorusWidth = 0i8;
+	int8_t m_chorusAmount = 0i8;
+	std::array<int8_t, 11> m_possibleRedundant6{};
+	uint8_t m_volume = 0ui8;
+	int8_t m_pan = 0i8;
+	std::array<int8_t, 2> m_possibleRedundant7{};
+	uint8_t m_filterType = 0ui8;
+	int8_t m_possibleRedundant8 = 0i8;
+	uint8_t m_filterFrequency = 0ui8;
+	uint8_t m_filterQ = 0ui8;
+	std::array<int8_t, 224> m_possibleRedundant9{};
 };
 
 struct E4Preset final
@@ -254,18 +285,18 @@ struct E4Preset final
 	[[nodiscard]] uint32_t GetNumVoices() const { return m_numVoices; }
 
 	std::array<char, E4BVariables::NAME_SIZE> m_name{};
-	std::array<char, 3> m_possibleRedundantA{};
-	unsigned char m_numVoices = 0;
-	std::array<char, 53> m_possibleRedundantB{};
+	std::array<int8_t, 3> m_possibleRedundantA{};
+	uint8_t m_numVoices = 0ui8;
+	std::array<int8_t, 53> m_possibleRedundantB{};
 };
 
 struct E4Emst final
 {
-	[[nodiscard]] uint32_t GetCurrentPreset() const { return m_currentPreset; }
+	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
 
 	std::array<char, 4> m_name{};
-	std::array<char, 27> m_possibleRedundantA{};
-	unsigned char m_currentPreset = 0;
+	std::array<int8_t, 27> m_possibleRedundantA{};
+	uint8_t m_currentPreset = 0ui8;
 };
 
 /*
@@ -283,25 +314,51 @@ enum struct EMIDINote
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const uint32_t originalKey, const int32_t filterFreq, const int32_t pan, const int32_t volume, const double fineTune,
-		const std::string_view filterType, const std::pair<uint32_t, uint32_t> zone) : m_zone(zone), m_filterType(filterType),
-		m_fineTune(fineTune), m_volume(volume), m_pan(pan), m_filterFrequency(filterFreq), m_originalKey(originalKey) {}
+	explicit E4VoiceResult(const uint8_t sampleIndex, const uint8_t originalKey, const uint8_t chorusWidth, const uint8_t chorusAmount, const uint16_t filterFreq, 
+		const int8_t pan, const int8_t volume, const double fineTune, const double filterQ, const std::string_view filterType, const std::pair<uint8_t, uint8_t> zone, 
+		const std::pair<uint8_t, uint8_t> velocity) : m_zone(zone), m_velocity(velocity), m_filterType(filterType), m_fineTune(fineTune), m_filterQ(filterQ), m_volume(volume),
+		m_pan(pan), m_filterFrequency(filterFreq), m_chorusAmount(chorusAmount), m_chorusWidth(chorusWidth), m_originalKey(originalKey), m_sampleIndex(sampleIndex) {}
 
-	[[nodiscard]] const std::pair<uint32_t, uint32_t>& GetZoneRange() const { return m_zone; }
-	[[nodiscard]] uint32_t GetOriginalKey() const { return m_originalKey; }
-	[[nodiscard]] int32_t GetFilterFrequency() const { return m_filterFrequency; }
-	[[nodiscard]] int32_t GetPan() const { return m_pan; }
-	[[nodiscard]] int32_t GetVolume() const { return m_volume; }
+	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
+	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetZoneRange() const { return m_zone; }
+	[[nodiscard]] uint8_t GetOriginalKey() const { return m_originalKey; }
+	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetVelocityRange() const { return m_velocity; }
+	[[nodiscard]] uint16_t GetFilterFrequency() const { return m_filterFrequency; }
+	[[nodiscard]] int8_t GetPan() const { return m_pan; }
+	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
+	[[nodiscard]] uint8_t GetChorusAmount() const { return m_chorusAmount; }
+	[[nodiscard]] uint8_t GetChorusWidth() const { return m_chorusWidth; }
+	[[nodiscard]] double GetFilterQ() const { return m_filterQ; }
 	[[nodiscard]] double GetFineTune() const { return m_fineTune; }
 	[[nodiscard]] const std::string_view& GetFilterType() const { return m_filterType; }
 
-	std::pair<uint32_t, uint32_t> m_zone{0u, 0u};
+	std::pair<uint8_t, uint8_t> m_zone{0ui8, 0ui8};
+	std::pair<uint8_t, uint8_t> m_velocity{0ui8, 0ui8};
 	std::string_view m_filterType;
 	double m_fineTune = 0.;
-	int32_t m_volume = 0;
-	int32_t m_pan = 0;
-	int32_t m_filterFrequency = 0;
-	uint32_t m_originalKey = 0u;
+	double m_filterQ = 0.;
+	int8_t m_volume = 0;
+	int8_t m_pan = 0;
+	uint16_t m_filterFrequency = 0;
+	uint8_t m_chorusAmount = 0ui8;
+	uint8_t m_chorusWidth = 0ui8;
+	uint8_t m_originalKey = 0ui8;
+	uint8_t m_sampleIndex = 0ui8;
+};
+
+struct E4SampleResult final
+{
+	explicit E4SampleResult(std::string&& sampleName, std::vector<int16_t>&& data, const uint32_t sampleRate, const uint32_t channels, const bool isLooping, const bool isReleasing, const uint32_t loopStart, const uint32_t loopEnd)
+		: m_sampleName(std::move(sampleName)), m_sampleData(std::move(data)), m_sampleRate(sampleRate), m_loopStart(loopStart), m_loopEnd(loopEnd), m_channels(channels), m_isLooping(isLooping), m_isReleasing(isReleasing) {}
+
+	std::string m_sampleName;
+	std::vector<int16_t> m_sampleData{};
+	uint32_t m_sampleRate = 0u;
+	uint32_t m_loopStart = 0u;
+	uint32_t m_loopEnd = 0u;
+	uint32_t m_channels = 0u;
+	bool m_isLooping = false;
+	bool m_isReleasing = false;
 };
 
 struct E4PresetResult final
@@ -319,9 +376,11 @@ struct E4Result final
 	E4Result() = default;
 	explicit E4Result(std::vector<E4PresetResult>&& presets) : m_presets(std::move(presets)) {}
 	[[nodiscard]] const std::vector<E4PresetResult>& GetPresets() const { return m_presets; }
+	[[nodiscard]] const std::vector<E4SampleResult>& GetSamples() const { return m_samples; }
 
-	void Clear() { m_presets.clear(); }
+	void Clear() { m_presets.clear(); m_samples.clear(); }
 
-	uint32_t m_currentPreset = 255u;
+	uint8_t m_currentPreset = 255ui8;
 	std::vector<E4PresetResult> m_presets{};
+	std::vector<E4SampleResult> m_samples{};
 };
