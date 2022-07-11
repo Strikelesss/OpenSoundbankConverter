@@ -7,13 +7,7 @@
 
 #include "riff.hpp"
 
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
-#include <ostream>
 #include <sstream>
-#include <stdexcept>
 
 #include "byteio.hpp"
 

@@ -5,15 +5,8 @@
 
 #include "riff_ibag_chunk.hpp"
 
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/instrument.hpp>
-#include <sf2cute/instrument_zone.hpp>
 
 #include "byteio.hpp"
 

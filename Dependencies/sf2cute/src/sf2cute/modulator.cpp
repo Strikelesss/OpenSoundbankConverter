@@ -5,7 +5,6 @@
 
 #include <sf2cute/modulator.hpp>
 
-#include <cstdint>
 
 namespace sf2cute {
 

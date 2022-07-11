@@ -5,13 +5,6 @@
 
 #include "riff_inst_chunk.hpp"
 
-#include <stdint.h>
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/instrument.hpp>
 

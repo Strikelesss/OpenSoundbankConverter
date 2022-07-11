@@ -5,13 +5,6 @@
 
 #include "riff_shdr_chunk.hpp"
 
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/sample.hpp>
 

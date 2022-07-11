@@ -5,12 +5,6 @@
 
 #include "riff_phdr_chunk.hpp"
 
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/preset.hpp>
 

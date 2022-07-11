@@ -1,8 +1,6 @@
 #include "Header/E4BFunctions.h"
 #include "Header/BinaryReader.h"
 #include "Header/E4Preset.h"
-#include "Header/E4BVariables.h"
-#include "Header/WAVDefinitions.h"
 #include "Header/E4Sample.h"
 
 uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)

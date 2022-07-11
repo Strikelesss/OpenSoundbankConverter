@@ -5,17 +5,8 @@
 
 #include "riff_igen_chunk.hpp"
 
-#include <stdint.h>
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/instrument.hpp>
-#include <sf2cute/instrument_zone.hpp>
 
 #include "byteio.hpp"
 

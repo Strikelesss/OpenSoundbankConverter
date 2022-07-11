@@ -5,14 +5,7 @@
 
 #include <sf2cute/instrument.hpp>
 
-#include <algorithm>
-#include <memory>
-#include <utility>
-#include <functional>
-#include <string>
-#include <vector>
 
-#include <sf2cute/instrument_zone.hpp>
 #include <sf2cute/file.hpp>
 
 namespace sf2cute {

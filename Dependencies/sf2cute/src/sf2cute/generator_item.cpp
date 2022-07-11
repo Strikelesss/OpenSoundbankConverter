@@ -6,7 +6,6 @@
 #include <sf2cute/generator_item.hpp>
 
 #include <array>
-#include <utility>
 
 namespace sf2cute {
 

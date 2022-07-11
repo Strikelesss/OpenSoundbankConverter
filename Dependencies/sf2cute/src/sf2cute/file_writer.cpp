@@ -5,15 +5,11 @@
 
 #include "file_writer.hpp"
 
-#include <algorithm>
-#include <string>
-#include <unordered_map>
 #include <fstream>
 
 #include <sf2cute/file.hpp>
 
 #include "byteio.hpp"
-#include "riff.hpp"
 #include "riff_smpl_chunk.hpp"
 #include "riff_phdr_chunk.hpp"
 #include "riff_pbag_chunk.hpp"

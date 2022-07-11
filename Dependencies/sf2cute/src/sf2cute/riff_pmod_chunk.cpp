@@ -5,15 +5,8 @@
 
 #include "riff_pmod_chunk.hpp"
 
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/preset.hpp>
-#include <sf2cute/preset_zone.hpp>
 
 #include "byteio.hpp"
 

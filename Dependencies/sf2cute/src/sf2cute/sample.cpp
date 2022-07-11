@@ -5,11 +5,6 @@
 
 #include <sf2cute/sample.hpp>
 
-#include <stdint.h>
-#include <memory>
-#include <algorithm>
-#include <string>
-#include <vector>
 
 namespace sf2cute {
 

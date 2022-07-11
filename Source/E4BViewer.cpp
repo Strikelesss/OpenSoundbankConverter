@@ -1,7 +1,6 @@
 #include "Header/E4BViewer.h"
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
-#include <fstream>
 #include <tchar.h>
 #include <ShlObj_core.h>
 

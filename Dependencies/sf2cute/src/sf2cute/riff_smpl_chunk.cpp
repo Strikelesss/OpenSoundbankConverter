@@ -5,11 +5,6 @@
 
 #include "riff_smpl_chunk.hpp"
 
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/sample.hpp>
 

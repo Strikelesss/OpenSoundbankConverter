@@ -5,17 +5,8 @@
 
 #include "riff_pgen_chunk.hpp"
 
-#include <stdint.h>
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <sstream>
-#include <ostream>
-#include <stdexcept>
 
 #include <sf2cute/preset.hpp>
-#include <sf2cute/preset_zone.hpp>
 
 #include "byteio.hpp"
 

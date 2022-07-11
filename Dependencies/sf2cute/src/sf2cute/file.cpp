@@ -5,18 +5,9 @@
 
 #include <sf2cute/file.hpp>
 
-#include <iterator>
-#include <algorithm>
-#include <stdexcept>
-#include <unordered_map>
-#include <fstream>
 
 #include <sf2cute/sample.hpp>
-#include <sf2cute/generator_item.hpp>
-#include <sf2cute/modulator_item.hpp>
-#include <sf2cute/instrument_zone.hpp>
 #include <sf2cute/instrument.hpp>
-#include <sf2cute/preset_zone.hpp>
 #include <sf2cute/preset.hpp>
 
 #include "file_writer.hpp"

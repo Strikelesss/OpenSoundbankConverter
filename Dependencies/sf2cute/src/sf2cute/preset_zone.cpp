@@ -5,7 +5,6 @@
 
 #include <sf2cute/preset_zone.hpp>
 
-#include <sf2cute/generator_item.hpp>
 #include <sf2cute/preset.hpp>
 #include <sf2cute/file.hpp>
 

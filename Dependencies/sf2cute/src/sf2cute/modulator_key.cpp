@@ -5,7 +5,6 @@
 
 #include <sf2cute/modulator_key.hpp>
 
-#include <stdint.h>
 
 namespace sf2cute {
 

@@ -5,13 +5,7 @@
 
 #include <sf2cute/zone.hpp>
 
-#include <algorithm>
-#include <utility>
-#include <functional>
-#include <vector>
 
-#include <sf2cute/generator_item.hpp>
-#include <sf2cute/modulator_item.hpp>
 
 namespace sf2cute {
 
