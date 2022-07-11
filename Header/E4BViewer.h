@@ -6,7 +6,7 @@
 #include <wrl/client.h>
 #include "E4Preset.h"
 
-namespace E4BSampleReplacer
+namespace E4BViewer
 {
 	constexpr std::string_view EMU4_FILE_EXT_A = ".E4B";
 	constexpr std::string_view EMU4_FILE_EXT_B = ".e4b";

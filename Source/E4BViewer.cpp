@@ -1,4 +1,4 @@
-#include "Header/E4BSampleReplacer.h"
+#include "Header/E4BViewer.h"
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include <fstream>
@@ -9,7 +9,7 @@
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-bool E4BSampleReplacer::CreateResources()
+bool E4BViewer::CreateResources()
 {
 	DXGI_SWAP_CHAIN_DESC sd;
 	ZeroMemory(&sd, sizeof(sd));
@@ -56,7 +56,7 @@ bool E4BSampleReplacer::CreateResources()
 	return false;
 }
 
-void E4BSampleReplacer::Render()
+void E4BViewer::Render()
 {
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -72,12 +72,17 @@ void E4BSampleReplacer::Render()
 		{
 			ImGui::OpenPopup(m_openedBank.string().c_str());
 
-			if(ImGui::BeginPopupModal(m_openedBank.string().c_str(), &m_isBankOpened))
+			ImGui::SetNextWindowSize(ImVec2(windowSize.x / 1.25f, windowSize.y / 1.25f));
+			if(ImGui::BeginPopupModal(m_openedBank.string().c_str(), &m_isBankOpened, ImGuiWindowFlags_NoResize))
 			{
+				/*
 				if(ImGui::InputScalar("Startup Preset # (255 = NO PRESET BOUND)", ImGuiDataType_U32, &m_currentResult.m_currentPreset))
 				{
 					// TODO: change current preset (either write a new file, or save the last 'end' position and copy, then modify)
 				}
+				*/
+
+				ImGui::Text("Startup Preset #: %u (255 = NO PRESET BOUND)", m_currentResult.m_currentPreset);
 
 				if (ImGui::TreeNode("Presets"))
 				{
@@ -145,6 +150,7 @@ void E4BSampleReplacer::Render()
 					ImGui::TreePop();
 				}
 
+				ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
 				if(ImGui::Button("Convert To SF2"))
 				{
 					constexpr BankConverter converter;
@@ -231,7 +237,7 @@ void E4BSampleReplacer::Render()
 	m_swapchain->Present(0u, 0u);
 }
 
-void E4BSampleReplacer::RefreshFiles()
+void E4BViewer::RefreshFiles()
 {
 	m_bankFiles.clear();
 	if (exists(m_currentSearchPath))
@@ -253,19 +259,19 @@ void E4BSampleReplacer::RefreshFiles()
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	const WNDCLASSEX wc{ sizeof(WNDCLASSEX), CS_CLASSDC, E4BSampleReplacer::WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("test"), nullptr};
+	const WNDCLASSEX wc{ sizeof(WNDCLASSEX), CS_CLASSDC, E4BViewer::WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("test"), nullptr};
     RegisterClassEx(&wc);
 
-    E4BSampleReplacer::m_hwnd = CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL);
+    E4BViewer::m_hwnd = CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL);
 
-    if (!E4BSampleReplacer::CreateResources())
+    if (!E4BViewer::CreateResources())
     {
         UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
     }
 
-	E4BSampleReplacer::m_currentSearchPath = std::filesystem::current_path();
-	E4BSampleReplacer::RefreshFiles();
+	E4BViewer::m_currentSearchPath = std::filesystem::current_path();
+	E4BViewer::RefreshFiles();
 
 	bool keepRunning(true);
     while (keepRunning)
@@ -279,14 +285,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         }
 
 		if (!keepRunning) { break; }
-        E4BSampleReplacer::Render();
+        E4BViewer::Render();
     }
 
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
-    DestroyWindow(E4BSampleReplacer::m_hwnd);
+    DestroyWindow(E4BViewer::m_hwnd);
     UnregisterClass(wc.lpszClassName, wc.hInstance);
 	return 0;
 
@@ -329,7 +335,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	*/
 }
 
-LRESULT E4BSampleReplacer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam, const LPARAM lParam)
+LRESULT E4BViewer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam, const LPARAM lParam)
 {
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) { return true; }
 
