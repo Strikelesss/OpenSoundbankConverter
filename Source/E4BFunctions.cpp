@@ -1,146 +1,162 @@
 #include "Header/E4BFunctions.h"
-
-#include <cassert>
-
+#include "Header/BinaryReader.h"
 #include "Header/E4Preset.h"
 #include "Header/E4BVariables.h"
 #include "Header/WAVDefinitions.h"
-#include "Header/Chunk.h"
-#include "Header/E3Sample.h"
+#include "Header/E4Sample.h"
 
-int32_t E4BFunctions::VerifyChunkName(const Chunk* chunk, const char* name)
+uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 {
-	const int32_t v(std::strncmp(chunk->name.data(), name, E4BVariables::CHUNK_NAME_LEN));
-	if (v) { std::printf("Unexpected chunk name %s\n", name); }
-	return v;
-}
-
-uint32_t E4BFunctions::GetSampleChannels(const E3Sample* sample)
-{
-	if ((sample->m_format & E4BVariables::STEREO_SAMPLE) == E4BVariables::STEREO_SAMPLE || 
-		(sample->m_format & E4BVariables::STEREO_SAMPLE_2) == E4BVariables::STEREO_SAMPLE_2) { return 2u; }
+	if ((sample.m_format & E4BVariables::STEREO_SAMPLE) == E4BVariables::STEREO_SAMPLE || 
+		(sample.m_format & E4BVariables::STEREO_SAMPLE_2) == E4BVariables::STEREO_SAMPLE_2) { return 2u; }
 
 	return 1u;
 }
 
-bool E4BFunctions::ProcessE4BFile(std::vector<char>& bankData, const EExtractionType extType, E4Result& outResult)
+bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, const EExtractionType extType, E4Result& outResult)
 {
-	auto* pos(bankData.data());
+	std::array<char, 4> tempChunkName{};
+	reader.readType(tempChunkName.data(), 4);
 
-	auto chunkData(reinterpret_cast<Chunk*>(bankData.data()));
-	if (VerifyChunkName(chunkData, E4BVariables::EMU4_FORM_TAG.data())) { return false; }
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_FORM_TAG.data(), E4BVariables::EMU4_FORM_TAG.length()) != 0) { return false; }
 
-	chunkData = std::next(chunkData, 1);
-	pos += sizeof(Chunk);
+	reader.skipBytes(4);
 
-	if (strncmp(chunkData->name.data(), E4BVariables::EMU4_E4_FORMAT.data(), E4BVariables::EMU4_E4_FORMAT.length()) != 0)
+	reader.readType(tempChunkName.data(), 4);
+
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_FORMAT.data(), E4BVariables::EMU4_E4_FORMAT.length()) != 0) { return false; }
+
+	reader.readType(tempChunkName.data(), 4);
+
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_TOC_TAG.data(), E4BVariables::EMU4_TOC_TAG.length()) != 0) { return false; }
+
+	uint32_t initialChunkLength(0u);
+	reader.readType(&initialChunkLength);
+
+	initialChunkLength = _byteswap_ulong(initialChunkLength);
+
+	const uint32_t numChunks(initialChunkLength / E4BVariables::CONTENT_CHUNK_LEN);
+	uint32_t lastLoc(0u);
+	for(uint32_t i(0); i < numChunks; ++i)
 	{
-		std::printf("Unexpected format\n"); return false;
-	}
+		reader.readType(tempChunkName.data(), 4);
 
-	chunkData = reinterpret_cast<Chunk*>(&pos[E4BVariables::EMU4_E4_FORMAT.length()]);
-	if (VerifyChunkName(chunkData, E4BVariables::EMU4_TOC_TAG.data())) { return false; }
-
-	const uint32_t chunk_len(_byteswap_ulong(chunkData->len));
-	chunkData = std::next(chunkData, 1);
-
-	auto endOfLast(0ul);
-	uint32_t i(0u);
-	uint32_t sample_index(0u);
-	while (i < chunk_len)
-	{
-		const auto chunkLength(_byteswap_ulong(chunkData->len) + E4BVariables::EMU4_E3_SAMPLE_OFFSET);
-		const auto chunkStart(_byteswap_ulong(*reinterpret_cast<unsigned int*>(&chunkData[1])));
-
-		endOfLast = chunkLength + chunkStart; // this is WAV end as well (was -1 before, not sure if it was needed)
-		const auto chunkStartData = reinterpret_cast<Chunk*>(&bankData[chunkStart + 2ull]);
-
-		//std::printf("%.4s: %.16s \n", content_chunk->name.data(), &content_chunk->data[6]);
-
-		if (std::strcmp(chunkData->name.data(), E4BVariables::EMU4_E4_PRESET_TAG.data()) == 0
-			&& extType == EExtractionType::PRINT_INFO)
+		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_PRESET_TAG.data(), E4BVariables::EMU4_E4_PRESET_TAG.length()) == 0)
 		{
-			const auto preset(reinterpret_cast<E4Preset*>(&chunkStartData[1]));
-			auto& presetResult(outResult.m_presets.emplace_back(preset->m_name.data()));
+			uint32_t chunkLen(0u);
+			reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
 
-			if (preset->GetNumVoices() > 0)
+			chunkLen = _byteswap_ulong(chunkLen);
+
+			uint32_t chunkLocation(0u);
+			reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + 4);
+
+			chunkLocation = _byteswap_ulong(chunkLocation);
+
+			lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
+
+			E4Preset preset;
+			reader.readTypeAtLocation(&preset, chunkLocation + 10ull);
+
+			auto& presetResult(outResult.m_presets.emplace_back(preset.m_name.data()));
+			if (preset.GetNumVoices() > 0u)
 			{
-				auto voicePosition(chunkStart + sizeof(E4Preset) + 10);
-				auto* voice(reinterpret_cast<E4Voice*>(&bankData[voicePosition]));
-				for (uint32_t j(1u); j <= preset->GetNumVoices(); ++j)
+				auto voicePos(chunkLocation + sizeof(E4Preset) + 10);
+
+				for (uint32_t j(1u); j <= preset.GetNumVoices(); ++j)
 				{
+					E4Voice voice;
+					reader.readTypeAtLocation(&voice, voicePos);
+
 					// Account for total voice size near the start of the voice
-					const auto voiceSize(_byteswap_ushort(*reinterpret_cast<unsigned short*>(voice->m_totalVoiceSize.data()))
+					const auto voiceSize(_byteswap_ushort(*reinterpret_cast<const unsigned short*>(voice.m_totalVoiceSize.data()))
 						+ 9); // Add the 9 redundant bytes at the end
 
 					const auto numVoiceEnds(static_cast<int>(voiceSize - sizeof(E4Voice)) / 22);
 					for (int k(0); k < numVoiceEnds; ++k)
 					{
-						const auto* voiceEnd(reinterpret_cast<E4VoiceEndData*>(&bankData[voicePosition + sizeof(E4Voice) + static_cast<unsigned long long>(k * 22)]));
-						auto zoneRange(numVoiceEnds > 1 ? voiceEnd->GetZoneRange() : voice->GetZoneRange());
+						E4VoiceEndData voiceEnd;
+						reader.readTypeAtLocation(&voiceEnd, voicePos + sizeof(E4Voice) + static_cast<unsigned long long>(k * 22));
+
+						auto zoneRange(numVoiceEnds > 1 ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
 
 						// Account for the odd 'multisample' stuff
 						if(numVoiceEnds > 1)
 						{
 							if(zoneRange.first == 0)
 							{
-								zoneRange.first = voice->GetZoneRange().first;
+								zoneRange.first = voice.GetZoneRange().first;
 							}
 
 							if (zoneRange.second == 127)
 							{
-								zoneRange.second = voice->GetZoneRange().second;
+								zoneRange.second = voice.GetZoneRange().second;
 							}
 						}
 
-						presetResult.m_voices.emplace_back(voiceEnd->GetSampleIndex() - 1ui8, voiceEnd->GetOriginalKey(), voice->GetChorusWidth(), voice->GetChorusAmount(), voice->GetFilterFrequency(),
-							voice->GetPan(), voice->GetVolume(), voice->GetFineTune(), voice->GetFilterQ(), voice->GetFilterType(), zoneRange, voice->GetVelocityRange());
+						presetResult.m_voices.emplace_back(voiceEnd.GetSampleIndex() - 1ui8, voiceEnd.GetOriginalKey(), voice.GetChorusWidth(), voice.GetChorusAmount(), voice.GetFilterFrequency(),
+							voice.GetPan(), voice.GetVolume(), voice.GetFineTune(), voice.GetFilterQ(), voice.GetFilterType(), zoneRange, voice.GetVelocityRange());
 					}
 
-					voicePosition += static_cast<unsigned long long>(voiceSize - 9); // Remove the 9 redundant bytes
-					voice = reinterpret_cast<E4Voice*>(&bankData[voicePosition]);
+					voicePos += static_cast<unsigned long long>(voiceSize - 9); // Remove the 9 redundant bytes
 				}
 			}
 		}
 		else
 		{
-			if (std::strcmp(chunkData->name.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.data()) == 0)
+			if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()) == 0)
 			{
-				const auto sample(reinterpret_cast<E3Sample*>(&chunkStartData[1]));
-				const auto wavStart(chunkStart + E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET);
+				uint32_t chunkLen(0u);
+				reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
+
+				chunkLen = _byteswap_ulong(chunkLen);
+
+				uint32_t chunkLocation(0u);
+				reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + 4);
+
+				chunkLocation = _byteswap_ulong(chunkLocation);
+
+				lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
+
+				E4Sample sample;
+				reader.readTypeAtLocation(&sample, chunkLocation + 10ull);
+
+				const auto wavStart(chunkLocation + E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET);
 				//const auto numSamples((chunkLength - E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
 
 				uint32_t loopStart(0u);
 				uint32_t loopEnd(0u);
-				const auto canLoop(sample->m_format & SAMPLE_LOOP_FLAG);
+				const auto canLoop(sample.m_format & SAMPLE_LOOP_FLAG);
 				if(canLoop)
 				{
-					loopStart = (sample->m_params[5] - 92u) / 2u;
-					loopEnd = (sample->m_params[7] - 92u) / 2u;
+					loopStart = (sample.m_params[5] - SAMPLE_LOOP_OFFSET) / 2u;
+					loopEnd = (sample.m_params[7] - SAMPLE_LOOP_OFFSET) / 2u;
 				}
 
+				const auto& bankData(reader.GetData());
+
 				std::vector<int16_t> convertedSampleData;
-				std::vector<uint8_t> sampleData(&bankData[wavStart], &bankData[endOfLast]);
+				std::vector<uint8_t> sampleData(&bankData[wavStart], &bankData[lastLoc]);
 
 				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
 
-				outResult.m_samples.emplace_back(std::string(sample->m_name), std::move(convertedSampleData), sample->m_sample_rate, GetSampleChannels(sample), 
-					canLoop, sample->m_format & SAMPLE_RELEASE_FLAG, loopStart, loopEnd);
-
-				sample_index++;
+				outResult.m_samples.emplace_back(std::string(sample.m_name), std::move(convertedSampleData), sample.m_sample_rate, GetSampleChannels(sample), 
+					canLoop, sample.m_format & SAMPLE_RELEASE_FLAG, loopStart, loopEnd);
 			}
 		}
 
-		chunkData = std::next(chunkData, E4BVariables::CONTENT_CHUNK_LEN / sizeof(Chunk));
-		i += E4BVariables::CONTENT_CHUNK_LEN;
+		reader.skipBytes(E4BVariables::CONTENT_CHUNK_LEN - 4ull);
 	}
 
-	if (endOfLast <= bankData.size())
+	const auto& bankData(reader.GetData());
+	if (lastLoc <= bankData.size())
 	{
-		const auto* emst(reinterpret_cast<E4Emst*>(&bankData[endOfLast]));
-		if (std::strcmp(emst->m_name.data(), E4BVariables::EMU4_EMSt_TAG.data()) == 0)
+		E4Emst emst;
+		reader.readTypeAtLocation(&emst, lastLoc);
+
+		if (std::strcmp(emst.m_name.data(), E4BVariables::EMU4_EMSt_TAG.data()) == 0)
 		{
-			outResult.m_currentPreset = emst->GetCurrentPreset();
+			outResult.m_currentPreset = emst.GetCurrentPreset();
 		}
 	}
 

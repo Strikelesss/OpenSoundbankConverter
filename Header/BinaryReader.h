@@ -15,6 +15,26 @@ struct BinaryReader final
 		m_readSize += size;
 	}
 
+	template<typename T>
+	void readTypeAtLocation(T* data, const size_t& location, const size_t& customSize = 0)
+	{
+		if(location < m_readDataVector.size())
+		{
+			const auto size(customSize == 0 ? sizeof(T) : customSize);
+			std::memcpy(reinterpret_cast<char*>(data), &m_readDataVector[location], size);
+		}
+	}
+
+	void skipBytes(const size_t numBytes)
+	{
+		if(!m_readDataVector.empty() && numBytes <= m_readDataVector.size()
+			&& numBytes + m_readSize <= m_readDataVector.size())
+		{
+			m_readData += numBytes;
+			m_readSize += numBytes;
+		}
+	}
+
 	[[nodiscard]] char* GetDataPtr() { return m_readDataVector.data(); }
 	[[nodiscard]] const std::vector<char>& GetData() const { return m_readDataVector; }
 	[[nodiscard]] const std::filesystem::path& GetFilePath() const { return m_filePath; }

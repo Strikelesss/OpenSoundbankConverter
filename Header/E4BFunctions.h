@@ -1,10 +1,9 @@
 #pragma once
 #include <filesystem>
-#include <vector>
 
+struct BinaryReader;
 struct E4Result;
-struct Chunk;
-struct E3Sample;
+struct E4Sample;
 
 enum struct EExtractionType
 {
@@ -22,7 +21,6 @@ inline std::istream& operator>>(std::istream& is, EExtractionType& extType)
 
 namespace E4BFunctions
 {
-	int32_t VerifyChunkName(const Chunk* chunk, const char* name);
-	uint32_t GetSampleChannels(const E3Sample* sample);
-	[[nodiscard]] bool ProcessE4BFile(std::vector<char>& bankData, EExtractionType extType, E4Result& outResult);
+	[[nodiscard]] uint32_t GetSampleChannels(const E4Sample& sample);
+	[[nodiscard]] bool ProcessE4BFile(BinaryReader& reader, EExtractionType extType, E4Result& outResult);
 }

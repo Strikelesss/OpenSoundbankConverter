@@ -6,6 +6,7 @@
 #include <ShlObj_core.h>
 
 #include "Header/BankConverter.h"
+#include "Header/BinaryReader.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -176,25 +177,11 @@ void E4BViewer::Render()
 						{
 							m_openedBank = file;
 
-							std::ifstream fs2(m_openedBank.c_str(), std::ios::binary);
-							if (fs2.peek() == std::ifstream::traits_type::eof()) { break; }
-
-							std::vector<char> bankData{};
-							fs2.seekg(0, std::ifstream::end);
-							bankData.resize(fs2.tellg());
-							fs2.seekg(0, std::ifstream::beg);
-							fs2.read(bankData.data(), static_cast<std::streamsize>(bankData.size()));
-
-							/*
-							if (extType == EExtractionType::WAV_REPLACEMENT)
-							{
-								E4BFunctions::ProcessE4BFile(bankData, extType, replacementSampleLocation.append(replacementSampleFormat));
-								break;
-							}
-							*/
+							BinaryReader reader;
+							reader.readFile(file);
 
 							m_currentResult.Clear();
-							if(E4BFunctions::ProcessE4BFile(bankData, EExtractionType::PRINT_INFO, m_currentResult)) { m_isBankOpened = true; }
+							if(E4BFunctions::ProcessE4BFile(reader, EExtractionType::PRINT_INFO, m_currentResult)) { m_isBankOpened = true; }
 							break;
 						}
 					}
