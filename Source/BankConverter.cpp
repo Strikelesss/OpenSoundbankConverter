@@ -1,5 +1,6 @@
 #include "Header/BankConverter.h"
 #include "Header/E4Preset.h"
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sf2cute.hpp>
@@ -32,35 +33,25 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 			{
 				const auto& e4Sample(e4b.GetSamples()[sampleIndex]);
 
-				auto sampleMode(sf2cute::SampleMode::kNoLoop);
-				if(e4Sample.m_isLooping)
-				{
-					sampleMode = sf2cute::SampleMode::kLoopContinuously;
-				}
-				else
-				{
-					if(e4Sample.m_isReleasing)
-					{
-						sampleMode = sf2cute::SampleMode::kLoopEndsByKeyDepression;
-					}
-					else
-					{
-						sampleMode = sf2cute::SampleMode::kNoLoop;
-					}
-				}
+				const auto sampleMode(e4Sample.m_isLooping ? sf2cute::SampleMode::kLoopContinuously : e4Sample.m_isReleasing ? 
+					sf2cute::SampleMode::kLoopEndsByKeyDepression : sf2cute::SampleMode::kNoLoop);
 
 				const auto& zoneRange(voice.GetZoneRange());
 				const auto& velRange(voice.GetVelocityRange());
 
+				const auto K(1200 / std::log10(2));
+				const auto centOffset(static_cast<uint32_t>(std::round(K * (std::log10(voice.GetFilterFrequency()) - std::log10(440)))));
+				const auto cents(std::clamp(6900 + centOffset, 1500u, 13500u));
+
 				sf2cute::SFInstrumentZone instrumentZone(sf2.samples()[sampleIndex], std::vector{
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kOverridingRootKey, voice.GetOriginalKey()),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kPan, static_cast<int16_t>(voice.GetPan() * 10i16)),
-					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(voice.GetVolume() * 10i16)),
+					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, std::clamp(static_cast<int16_t>(std::abs(voice.GetVolume()) * 10i16), 0i16, 144i16)), // Abs volume since SF2 does not support negative attenuation
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.first, zoneRange.second)),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second)),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSampleModes, static_cast<int16_t>(sampleMode)),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFineTune, static_cast<int16_t>(voice.GetFineTune())),
-					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(voice.GetFilterFrequency())),
+					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(cents)),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(voice.GetFilterQ())),
 					sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kChorusEffectsSend, voice.GetChorusAmount())
 				}, std::vector<sf2cute::SFModulatorItem>{});

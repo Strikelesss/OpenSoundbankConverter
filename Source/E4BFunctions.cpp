@@ -11,7 +11,7 @@ uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 	return 1u;
 }
 
-bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, const EExtractionType extType, E4Result& outResult)
+bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 {
 	std::array<char, 4> tempChunkName{};
 	reader.readType(tempChunkName.data(), 4);
@@ -70,16 +70,16 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, const EExtractionType ex
 					const auto voiceSize(_byteswap_ushort(*reinterpret_cast<const unsigned short*>(voice.m_totalVoiceSize.data()))
 						+ 9); // Add the 9 redundant bytes at the end
 
-					const auto numVoiceEnds(static_cast<int>(voiceSize - sizeof(E4Voice)) / 22);
-					for (int k(0); k < numVoiceEnds; ++k)
+					const auto numVoiceEnds((voiceSize - sizeof(E4Voice)) / sizeof(E4VoiceEndData));
+					for (uint64_t k(0ull); k < numVoiceEnds; ++k)
 					{
 						E4VoiceEndData voiceEnd;
-						reader.readTypeAtLocation(&voiceEnd, voicePos + sizeof(E4Voice) + static_cast<unsigned long long>(k * 22));
+						reader.readTypeAtLocation(&voiceEnd, voicePos + sizeof(E4Voice) + k * sizeof(E4VoiceEndData));
 
 						auto zoneRange(numVoiceEnds > 1 ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
 
 						// Account for the odd 'multisample' stuff
-						if(numVoiceEnds > 1)
+						if(numVoiceEnds > 1ull)
 						{
 							if(zoneRange.first == 0)
 							{

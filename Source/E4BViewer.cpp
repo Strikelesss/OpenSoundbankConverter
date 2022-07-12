@@ -1,11 +1,12 @@
 #include "Header/E4BViewer.h"
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
-#include <tchar.h>
-#include <ShlObj_core.h>
-
 #include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
+#include "Header/E4BFunctions.h"
+#include "Header/VoiceDefinitions.h"
+#include <ShlObj_core.h>
+#include <tchar.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -180,7 +181,7 @@ void E4BViewer::Render()
 							reader.readFile(file);
 
 							m_currentResult.Clear();
-							if(E4BFunctions::ProcessE4BFile(reader, EExtractionType::PRINT_INFO, m_currentResult)) { m_isBankOpened = true; }
+							if(E4BFunctions::ProcessE4BFile(reader, m_currentResult)) { m_isBankOpened = true; }
 							break;
 						}
 					}
@@ -281,44 +282,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     DestroyWindow(E4BViewer::m_hwnd);
     UnregisterClass(wc.lpszClassName, wc.hInstance);
 	return 0;
-
-	/*
-	if (bankNumber < bankFiles.size())
-	{
-		std::ifstream fs2(bankFiles[bankNumber].c_str(), std::ios::binary);
-		if (fs2.peek() == std::ifstream::traits_type::eof()) { std::printf("Failed to read file! \n"); return 0; }
-
-		std::vector<char> bankData{};
-		fs2.seekg(0, std::ifstream::end);
-		bankData.resize(fs2.tellg());
-		fs2.seekg(0, std::ifstream::beg);
-		fs2.read(bankData.data(), static_cast<std::streamsize>(bankData.size()));
-
-		if (extType == EExtractionType::WAV_REPLACEMENT)
-		{
-			std::printf("Enter the replacement sample folder name: ");
-
-			std::string replacementSampleFolder;
-			std::getline(std::cin, replacementSampleFolder);
-
-			std::printf("Enter the replacement sample format name (e.g. SAMPLE_XXX): ");
-
-			std::string replacementSampleFormat;
-			std::getline(std::cin, replacementSampleFormat);
-
-			std::filesystem::path replacementSampleLocation(bankLocation);
-			replacementSampleLocation.append(replacementSampleFolder);
-
-			E4BFunctions::ProcessE4BFile(bankData, extType, replacementSampleLocation.append(replacementSampleFormat));
-			return 0;
-		}
-
-		E4BFunctions::ProcessE4BFile(bankData, extType);
-		return 0;
-	}
-
-	std::printf("Invalid bank number typed! \n");
-	*/
 }
 
 LRESULT E4BViewer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam, const LPARAM lParam)

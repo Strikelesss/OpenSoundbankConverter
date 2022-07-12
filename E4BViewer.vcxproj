@@ -171,6 +171,8 @@
     <ClCompile Include="Source\BinaryReader.cpp" />
     <ClCompile Include="Source\E4BFunctions.cpp" />
     <ClCompile Include="Source\E4BViewer.cpp" />
+    <ClCompile Include="Source\E4Preset.cpp" />
+    <ClCompile Include="Source\VoiceDefinitions.cpp" />
     <ClCompile Include="Source\WAVDefinitions.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -211,6 +213,8 @@
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_pmod_chunk.hpp" />
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_shdr_chunk.hpp" />
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_smpl_chunk.hpp" />
+    <ClInclude Include="Dependencies\TinySoundFont\tml.h" />
+    <ClInclude Include="Dependencies\TinySoundFont\tsf.h" />
     <ClInclude Include="Header\BankConverter.h" />
     <ClInclude Include="Header\BinaryReader.h" />
     <ClInclude Include="Header\E4Sample.h" />
@@ -218,6 +222,7 @@
     <ClInclude Include="Header\E4BViewer.h" />
     <ClInclude Include="Header\E4BVariables.h" />
     <ClInclude Include="Header\E4Preset.h" />
+    <ClInclude Include="Header\VoiceDefinitions.h" />
     <ClInclude Include="Header\WAVDefinitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

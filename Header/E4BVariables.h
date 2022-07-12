@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <string_view>
 
 namespace E4BVariables
 {
