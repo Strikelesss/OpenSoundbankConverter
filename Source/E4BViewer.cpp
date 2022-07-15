@@ -1,4 +1,7 @@
 #include "Header/E4BViewer.h"
+
+#include <fstream>
+
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include "Header/BankConverter.h"
@@ -83,15 +86,15 @@ void E4BViewer::Render()
 				}
 				*/
 
-				ImGui::Text("Startup Preset #: %u (255 = NO PRESET BOUND)", m_currentResult.m_currentPreset);
+				ImGui::Text("Startup Preset #: %u (255 = NO PRESET BOUND)", m_currentResult.GetCurrentPreset());
 
 				if (ImGui::TreeNode("Presets"))
 				{
 					int32_t presetIndex(0u);
-					for(const auto& preset : m_currentResult.GetPresets())
+					for(auto& preset : m_currentResult.GetPresets())
 					{
 						ImGui::PushID(presetIndex);
-						if (ImGui::TreeNode(preset.m_name.data()))
+						if (ImGui::TreeNode(preset.GetName().data()))
 						{
 							int32_t voiceIndex(1u);
 							for(const auto& voice : preset.GetVoices())
@@ -109,6 +112,13 @@ void E4BViewer::Render()
 									ImGui::Text("Pan: %d", voice.GetPan());
 									ImGui::Text("Volume: %d", voice.GetVolume());
 									ImGui::Text("Fine Tune: %f", voice.GetFineTune());
+
+									ImGui::Text("Attack 1 Level(%%): %f", static_cast<double>(voice.GetAttack1Level()));
+									ImGui::Text("Attack 2 Level(%%): %f", static_cast<double>(voice.GetAttack2Level()));
+									ImGui::Text("Decay 1 Level(%%): %f", static_cast<double>(voice.GetDecay1Level()));
+									ImGui::Text("Decay 2 Level(%%): %f", static_cast<double>(voice.GetDecay2Level()));
+									ImGui::Text("Release 1 Level(%%): %f", static_cast<double>(voice.GetRelease1Level()));
+									ImGui::Text("Release 2 Level(%%): %f", static_cast<double>(voice.GetRelease2Level()));
 									ImGui::TreePop();
 								}
 
@@ -132,20 +142,64 @@ void E4BViewer::Render()
 					for(const auto& sample : m_currentResult.GetSamples())
 					{
 						ImGui::PushID(sampleIndex);
-						if (ImGui::TreeNode(sample.m_sampleName.c_str()))
+						if (ImGui::TreeNode(sample.GetName().c_str()))
 						{
-							ImGui::Text("Sample Rate: %u", sample.m_sampleRate);
-							ImGui::Text("Loop Start: %u", sample.m_loopStart);
-							ImGui::Text("Loop End: %u", sample.m_loopEnd);
-							ImGui::Text("Loop: %d", sample.m_isLooping);
-							ImGui::Text("Release: %d", sample.m_isReleasing);
-							ImGui::Text("Sample Size: %zd", sample.m_sampleData.size());
+							ImGui::Text("Sample Rate: %u", sample.GetSampleRate());
+							ImGui::Text("Loop Start: %u", sample.GetLoopStart());
+							ImGui::Text("Loop End: %u", sample.GetLoopEnd());
+							ImGui::Text("Loop: %d", sample.IsLooping());
+							ImGui::Text("Release: %d", sample.IsReleasing());
+							ImGui::Text("Sample Size: %zd", sample.GetData().size());
 
 							ImGui::TreePop();
 						}
 
 						ImGui::PopID();
 						++sampleIndex;
+					}
+
+					ImGui::TreePop();
+				}
+
+				if (ImGui::TreeNode("Sequences"))
+				{
+					int32_t seqIndex(0u);
+					for(const auto& seq : m_currentResult.GetSequences())
+					{
+						ImGui::PushID(seqIndex);
+
+						if(ImGui::TreeNode(seq.GetName().c_str()))
+						{
+							if (ImGui::Button("Extract Sequence"))
+							{
+								std::array<wchar_t, MAX_PATH> szFileName{};
+
+								OPENFILENAME ofn{};
+								ofn.lStructSize = sizeof(ofn);
+								ofn.hwndOwner = nullptr;
+								ofn.lpstrFilter = _T(".mid");
+								ofn.lpstrFile = szFileName.data();
+								ofn.nMaxFile = MAX_PATH;
+								ofn.Flags = OFN_EXPLORER;
+								ofn.lpstrDefExt = _T("mid");
+
+								if (GetSaveFileName(&ofn))
+								{
+									std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
+
+									const auto& seqData(seq.GetMIDISeqData());
+									ofs.write(seqData.data(), static_cast<std::streamsize>(seqData.size()));
+									ofs.close();
+
+									OutputDebugStringA("Successfully extracted sequence! \n");
+								}
+							}
+
+							ImGui::TreePop();
+						}
+
+						ImGui::PopID();
+						++seqIndex;
 					}
 
 					ImGui::TreePop();
@@ -165,7 +219,7 @@ void E4BViewer::Render()
 			}
 		}
 
-		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.65f, windowSize.y * 0.65f)))
+		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 		{
 			for(const auto& file : m_bankFiles)
 			{

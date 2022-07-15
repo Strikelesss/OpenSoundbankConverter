@@ -17,7 +17,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 
 	for(const auto& e4Sample : e4b.GetSamples())
 	{
-		sf2.NewSample(e4Sample.m_sampleName, e4Sample.m_sampleData, e4Sample.m_loopStart, e4Sample.m_loopEnd, e4Sample.m_sampleRate, 0, 0ui8);
+		sf2.NewSample(e4Sample.GetName(), e4Sample.GetData(), e4Sample.GetLoopStart(), e4Sample.GetLoopEnd(), e4Sample.GetSampleRate(), 0, 0ui8);
 	}
 
 	uint32_t presetIndex(0u);
@@ -33,7 +33,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 			{
 				const auto& e4Sample(e4b.GetSamples()[sampleIndex]);
 
-				const auto sampleMode(e4Sample.m_isLooping ? sf2cute::SampleMode::kLoopContinuously : e4Sample.m_isReleasing ? 
+				const auto sampleMode(e4Sample.IsLooping() ? sf2cute::SampleMode::kLoopContinuously : e4Sample.IsReleasing() ? 
 					sf2cute::SampleMode::kLoopEndsByKeyDepression : sf2cute::SampleMode::kNoLoop);
 
 				const auto& zoneRange(voice.GetZoneRange());
