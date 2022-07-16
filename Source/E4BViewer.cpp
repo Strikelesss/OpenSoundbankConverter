@@ -7,7 +7,8 @@
 #include "Header/VoiceDefinitions.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
-#include <fstream>
+
+#include "Header/BinaryWriter.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -166,27 +167,25 @@ void E4BViewer::Render()
 						{
 							if (ImGui::Button("Extract Sequence"))
 							{
-								auto seqPath(std::filesystem::path(seq.GetName()).wstring());
-								seqPath.resize(MAX_PATH);
+								auto seqPathTemp(seq.GetName());
+								seqPathTemp.resize(MAX_PATH);
 
-								OPENFILENAME ofn{};
+								OPENFILENAMEA ofn{};
 								ofn.lStructSize = sizeof(ofn);
 								ofn.hwndOwner = nullptr;
-								ofn.lpstrFilter = _T(".mid");
-								ofn.lpstrFile = seqPath.data();
+								ofn.lpstrFilter = ".mid";
+								ofn.lpstrFile = seqPathTemp.data();
 								ofn.nMaxFile = MAX_PATH;
 								ofn.Flags = OFN_EXPLORER;
-								ofn.lpstrDefExt = _T("mid");
+								ofn.lpstrDefExt = "mid";
 
-								if (GetSaveFileName(&ofn))
+								if (GetSaveFileNameA(&ofn))
 								{
-									std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
+									std::filesystem::path seqPath(seqPathTemp);
+									BinaryWriter writer(seqPath);
 
 									const auto& seqData(seq.GetMIDISeqData());
-									ofs.write(seqData.data(), static_cast<std::streamsize>(seqData.size()));
-									ofs.close();
-
-									OutputDebugStringA("Successfully extracted sequence! \n");
+									if(writer.writeType(seqData.data(), seqData.size())) { if(writer.finishWriting()) { OutputDebugStringA("Successfully extracted sequence! \n"); } }
 								}
 							}
 
@@ -306,7 +305,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         return 1;
     }
 
-	E4BViewer::m_currentSearchPath = std::filesystem::current_path();
+	const auto currentPath(std::filesystem::current_path());
+	const auto saveLocation(std::filesystem::path(currentPath).append("save.txt"));
+	if(exists(saveLocation))
+	{
+		BinaryReader reader;
+		if(reader.readFile(saveLocation))
+		{
+			size_t pathLength(0);
+			reader.readType(&pathLength);
+
+			std::wstring path;
+			path.resize(pathLength);
+			reader.readType(path.data(), sizeof(wchar_t) * pathLength);
+
+			E4BViewer::m_currentSearchPath = path;
+		}
+		else
+		{
+			E4BViewer::m_currentSearchPath = currentPath;
+		}
+	}
+	else
+	{
+		E4BViewer::m_currentSearchPath = currentPath;
+	}
+
 	E4BViewer::RefreshFiles();
 
 	bool keepRunning(true);
@@ -323,6 +347,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		if (!keepRunning) { break; }
         E4BViewer::Render();
     }
+
+	BinaryWriter writer(saveLocation);
+	const auto searchPath(E4BViewer::m_currentSearchPath.wstring());
+
+	size_t pathLength(searchPath.length());
+	if(writer.writeType(&pathLength))
+	{
+		if(writer.writeType(searchPath.c_str(), sizeof(wchar_t) * pathLength))
+		{
+			if(writer.finishWriting()) { OutputDebugStringA("Wrote save file \n"); }
+		}
+	}
 
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();

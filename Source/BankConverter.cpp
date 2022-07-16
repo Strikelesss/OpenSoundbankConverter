@@ -5,8 +5,9 @@
 #include <iostream>
 #include <sf2cute.hpp>
 
-// temp includes, TODO: make save file function in a header
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <commdlg.h>
 #include <tchar.h>
 
 int16_t SF2Converter::FilterFrequencyToCents(const uint16_t freq)

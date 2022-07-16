@@ -70,6 +70,15 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)Build\$(Configuration)\</OutDir>
+    <IntDir>Intermediate\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)Build\$(Configuration)\</OutDir>
+    <IntDir>Intermediate\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -173,11 +182,11 @@
     <ClCompile Include="Dependencies\sf2cute\src\sf2cute\zone.cpp" />
     <ClCompile Include="Source\BankConverter.cpp" />
     <ClCompile Include="Source\BinaryReader.cpp" />
+    <ClCompile Include="Source\BinaryWriter.cpp" />
     <ClCompile Include="Source\E4BFunctions.cpp" />
     <ClCompile Include="Source\E4BViewer.cpp" />
     <ClCompile Include="Source\E4Preset.cpp" />
     <ClCompile Include="Source\VoiceDefinitions.cpp" />
-    <ClCompile Include="Source\WAVDefinitions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Dependencies\ImGui\backends\imgui_impl_dx11.h" />
@@ -221,13 +230,13 @@
     <ClInclude Include="Dependencies\TinySoundFont\tsf.h" />
     <ClInclude Include="Header\BankConverter.h" />
     <ClInclude Include="Header\BinaryReader.h" />
+    <ClInclude Include="Header\BinaryWriter.h" />
     <ClInclude Include="Header\E4Sample.h" />
     <ClInclude Include="Header\E4BFunctions.h" />
     <ClInclude Include="Header\E4BViewer.h" />
     <ClInclude Include="Header\E4BVariables.h" />
     <ClInclude Include="Header\E4Preset.h" />
     <ClInclude Include="Header\VoiceDefinitions.h" />
-    <ClInclude Include="Header\WAVDefinitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
