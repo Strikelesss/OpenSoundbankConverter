@@ -11,8 +11,7 @@ struct E4VoiceEndData final
 {
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
-		return std::make_pair(static_cast<uint8_t>(m_lowZone),
-			static_cast<uint8_t>(m_highZone));
+		return std::make_pair(m_lowZone, m_highZone);
 	}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
@@ -34,12 +33,54 @@ private:
 constexpr auto VOICE_END_DATA_SIZE = 22ull;
 constexpr auto VOICE_END_DATA_READ_SIZE = 13ull;
 
+struct E4Envelope final
+{
+	[[nodiscard]] double GetAttack1Sec() const;
+	[[nodiscard]] float GetAttack1Level() const;
+	[[nodiscard]] double GetAttack2Sec() const;
+	[[nodiscard]] float GetAttack2Level() const;
+	[[nodiscard]] double GetDecay1Sec() const;
+	[[nodiscard]] float GetDecay1Level() const;
+	[[nodiscard]] double GetDecay2Sec() const;
+	[[nodiscard]] float GetDecay2Level() const;
+	[[nodiscard]] double GetRelease1Sec() const;
+	[[nodiscard]] float GetRelease1Level() const;
+	[[nodiscard]] double GetRelease2Sec() const;
+	[[nodiscard]] float GetRelease2Level() const;
+private:
+	uint8_t m_attack1Sec = 0ui8;
+	uint8_t m_attack1Level = 0ui8;
+	uint8_t m_attack2Sec = 0ui8;
+	uint8_t m_attack2Level = 0ui8;
+
+	uint8_t m_decay1Sec = 0ui8;
+	uint8_t m_decay1Level = 0ui8;
+	uint8_t m_decay2Sec = 0ui8;
+	uint8_t m_decay2Level = 0ui8;
+
+	uint8_t m_release1Sec = 0ui8;
+	uint8_t m_release1Level = 0ui8;
+	uint8_t m_release2Sec = 0ui8;
+	uint8_t m_release2Level = 0ui8;
+};
+
+struct E4LFO final
+{
+private:
+	uint8_t m_rate = 0ui8;
+	uint8_t m_possibleRedundant1 = 0ui8;
+	uint8_t m_delay = 0ui8;
+	uint8_t m_variation = 0ui8;
+	bool m_keySync = true; // 00 = on, 01 = off (make sure to flip when getting)
+
+	std::array<int8_t, 3> m_possibleRedundant2{};
+};
+
 struct E4Voice final
 {
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
-		return std::make_pair(static_cast<uint8_t>(m_lowZone),
-			static_cast<uint8_t>(m_highZone));
+		return std::make_pair(m_lowZone, m_highZone);
 	}
 
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetVelocityRange() const
@@ -62,20 +103,17 @@ struct E4Voice final
 	// todo: attack/release/etc times
 
 	[[nodiscard]] uint16_t GetVoiceDataSize() const { return _byteswap_ushort(m_totalVoiceSize); }
-	[[nodiscard]] uint8_t GetChorusWidth() const { return m_chorusWidth; }
-	[[nodiscard]] uint8_t GetChorusAmount() const { return m_chorusAmount; }
+	[[nodiscard]] float GetChorusWidth() const;
+	[[nodiscard]] float GetChorusAmount() const;
 	[[nodiscard]] uint16_t GetFilterFrequency() const;
 	[[nodiscard]] int8_t GetPan() const { return m_pan; }
-	[[nodiscard]] int8_t GetVolume() const { return static_cast<int8_t>(m_volume); }
+	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
 	[[nodiscard]] double GetFineTune() const;
 	[[nodiscard]] double GetFilterQ() const;
 	[[nodiscard]] std::string_view GetFilterType() const;
-	[[nodiscard]] float GetAttack1Level() const;
-	[[nodiscard]] float GetAttack2Level() const;
-	[[nodiscard]] float GetDecay1Level() const;
-	[[nodiscard]] float GetDecay2Level() const;
-	[[nodiscard]] float GetRelease1Level() const;
-	[[nodiscard]] float GetRelease2Level() const;
+	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
+	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
+	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
 
 private:
 	uint16_t m_totalVoiceSize = 0i16;
@@ -96,7 +134,7 @@ private:
 
 	int8_t m_chorusAmount = 0i8;
 	std::array<int8_t, 11> m_possibleRedundant6{};
-	uint8_t m_volume = 0ui8;
+	int8_t m_volume = 0i8;
 	int8_t m_pan = 0i8;
 	std::array<int8_t, 2> m_possibleRedundant7{};
 
@@ -107,26 +145,28 @@ private:
 
 	std::array<int8_t, 48> m_possibleRedundant9{};
 
-	uint8_t m_attack1Sec = 0ui8;
-	uint8_t m_attack1Level = 0ui8;
-	uint8_t m_attack2Sec = 0ui8;
-	uint8_t m_attack2Level = 0ui8;
+	E4Envelope m_ampEnv{}; // 120
 
-	uint8_t m_decay1Sec = 0ui8;
-	uint8_t m_decay1Level = 0ui8;
-	uint8_t m_decay2Sec = 0ui8;
-	uint8_t m_decay2Level = 0ui8;
+	std::array<int8_t, 2> m_possibleRedundant10{}; // 122
 
-	uint8_t m_release1Sec = 0ui8;
-	uint8_t m_release1Level = 0ui8;
-	uint8_t m_release2Sec = 0ui8;
-	uint8_t m_release2Level = 0ui8;
+	E4Envelope m_filterEnv{}; // 134
+
+	std::array<int8_t, 2> m_possibleRedundant11{}; // 136
+
+	E4Envelope m_auxEnv{}; // 148
+
+	std::array<int8_t, 2> m_possibleRedundant12{}; // 150
+
+	E4LFO m_lfo1{}; // 158
+	E4LFO m_lfo2{}; // 166
+
+	std::array<int8_t, 2> m_padding{}; // 168
 };
 
 // In the file, excluding the 'end' size of VOICE_END_DATA_SIZE
 constexpr auto VOICE_DATA_SIZE = 284ull;
 
-constexpr auto VOICE_DATA_READ_SIZE = 120ull;
+constexpr auto VOICE_DATA_READ_SIZE = 164ull; // was 120
 
 struct E4Preset final
 {
@@ -167,12 +207,11 @@ private:
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const uint8_t sampleIndex, const uint8_t originalKey, const uint8_t chorusWidth, const uint8_t chorusAmount, const uint16_t filterFreq, 
+	explicit E4VoiceResult(const uint8_t sampleIndex, const uint8_t originalKey, const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, 
 		const int8_t pan, const int8_t volume, const double fineTune, const double filterQ, const std::string_view filterType, const std::pair<uint8_t, uint8_t> zone, 
-		const std::pair<uint8_t, uint8_t> velocity, const float attack1Level, const float attack2Level, const float decay1Level, const float decay2Level, const float release1Level, 
-		const float release2Level) : m_zone(zone), m_velocity(velocity), m_filterType(filterType), m_fineTune(fineTune), m_filterQ(filterQ), m_volume(volume), m_pan(pan),
-		m_filterFrequency(filterFreq), m_chorusAmount(chorusAmount), m_chorusWidth(chorusWidth), m_originalKey(originalKey), m_sampleIndex(sampleIndex), m_attack1Level(attack1Level),
-		m_attack2Level(attack2Level), m_decay1Level(decay1Level), m_decay2Level(decay2Level), m_release1Level(release1Level), m_release2Level(release2Level) {}
+		const std::pair<uint8_t, uint8_t> velocity, const E4Envelope& ampEnv, const E4Envelope& filterEnv, const E4Envelope& auxEnv) : m_zone(zone), m_velocity(velocity), m_filterType(filterType),
+		m_fineTune(fineTune), m_filterQ(filterQ), m_volume(volume), m_pan(pan), m_filterFrequency(filterFreq), m_chorusAmount(chorusAmount), m_chorusWidth(chorusWidth), m_originalKey(originalKey), 
+		m_sampleIndex(sampleIndex), m_ampEnv(ampEnv), m_filterEnv(filterEnv), m_auxEnv(auxEnv) {}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetZoneRange() const { return m_zone; }
@@ -181,17 +220,14 @@ struct E4VoiceResult final
 	[[nodiscard]] uint16_t GetFilterFrequency() const { return m_filterFrequency; }
 	[[nodiscard]] int8_t GetPan() const { return m_pan; }
 	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
-	[[nodiscard]] uint8_t GetChorusAmount() const { return m_chorusAmount; }
-	[[nodiscard]] uint8_t GetChorusWidth() const { return m_chorusWidth; }
+	[[nodiscard]] float GetChorusAmount() const { return m_chorusAmount; }
+	[[nodiscard]] float GetChorusWidth() const { return m_chorusWidth; }
 	[[nodiscard]] double GetFilterQ() const { return m_filterQ; }
 	[[nodiscard]] double GetFineTune() const { return m_fineTune; }
 	[[nodiscard]] const std::string_view& GetFilterType() const { return m_filterType; }
-	[[nodiscard]] float GetAttack1Level() const { return m_attack1Level; }
-	[[nodiscard]] float GetAttack2Level() const { return m_attack2Level; }
-	[[nodiscard]] float GetDecay1Level() const { return m_decay1Level; }
-	[[nodiscard]] float GetDecay2Level() const { return m_decay2Level; }
-	[[nodiscard]] float GetRelease1Level() const { return m_release1Level; }
-	[[nodiscard]] float GetRelease2Level() const { return m_release2Level; }
+	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
+	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
+	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
 
 private:
 	std::pair<uint8_t, uint8_t> m_zone{0ui8, 0ui8};
@@ -202,23 +238,14 @@ private:
 	int8_t m_volume = 0;
 	int8_t m_pan = 0;
 	uint16_t m_filterFrequency = 0;
-	uint8_t m_chorusAmount = 0ui8;
-	uint8_t m_chorusWidth = 0ui8;
+	float m_chorusAmount = 0.f;
+	float m_chorusWidth = 0.f;
 	uint8_t m_originalKey = 0ui8;
 	uint8_t m_sampleIndex = 0ui8;
 
-	float m_attack1Sec = 0.f;
-	float m_attack1Level = 0.f;
-	float m_attack2Sec = 0.f;
-	float m_attack2Level = 0.f;
-	float m_decay1Sec = 0.f;
-	float m_decay1Level = 0.f;
-	float m_decay2Sec = 0.f;
-	float m_decay2Level = 0.f;
-	float m_release1Sec = 0.f;
-	float m_release1Level = 0.f;
-	float m_release2Sec = 0.f;
-	float m_release2Level = 0.f;
+	E4Envelope m_ampEnv{};
+	E4Envelope m_filterEnv{};
+	E4Envelope m_auxEnv{};
 };
 
 struct E4SampleResult final

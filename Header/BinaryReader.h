@@ -35,6 +35,8 @@ struct BinaryReader final
 		}
 	}
 
+	[[nodiscard]] std::vector<char>& GetDataTest() { return m_readDataVector; }
+
 	[[nodiscard]] char* GetDataPtr() { return m_readDataVector.data(); }
 	[[nodiscard]] const std::vector<char>& GetData() const { return m_readDataVector; }
 	[[nodiscard]] const std::filesystem::path& GetFilePath() const { return m_filePath; }

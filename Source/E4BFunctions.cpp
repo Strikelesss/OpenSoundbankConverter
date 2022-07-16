@@ -1,4 +1,5 @@
 #include "Header/E4BFunctions.h"
+#include <fstream>
 #include "Header/BinaryReader.h"
 #include "Header/E4Preset.h"
 #include "Header/E4Sample.h"
@@ -90,9 +91,9 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 							}
 						}
 
-						presetResult.AddVoice(E4VoiceResult(voiceEnd.GetSampleIndex() - 1ui8, voiceEnd.GetOriginalKey(), voice.GetChorusWidth(), voice.GetChorusAmount(), voice.GetFilterFrequency(),
-							voice.GetPan(), voice.GetVolume(), voice.GetFineTune(), voice.GetFilterQ(), voice.GetFilterType(), zoneRange, voice.GetVelocityRange(), voice.GetAttack1Level(),
-							voice.GetAttack2Level(), voice.GetDecay1Level(), voice.GetDecay2Level(), voice.GetRelease1Level(), voice.GetRelease2Level()));
+						presetResult.AddVoice(E4VoiceResult(voiceEnd.GetSampleIndex() - 1ui8, voiceEnd.GetOriginalKey(), voice.GetChorusWidth(), voice.GetChorusAmount(), 
+							voice.GetFilterFrequency(), voice.GetPan(), voice.GetVolume(), voice.GetFineTune(), voice.GetFilterQ(), voice.GetFilterType(), zoneRange, 
+							voice.GetVelocityRange(), voice.GetAmpEnv(), voice.GetFilterEnv(), voice.GetAuxEnv()));
 					}
 
 					voicePos += static_cast<unsigned long long>(voiceSize);

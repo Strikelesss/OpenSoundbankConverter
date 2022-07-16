@@ -1,7 +1,4 @@
 #include "Header/E4BViewer.h"
-
-#include <fstream>
-
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
 #include "Header/BankConverter.h"
@@ -10,6 +7,7 @@
 #include "Header/VoiceDefinitions.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
+#include <fstream>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -113,12 +111,8 @@ void E4BViewer::Render()
 									ImGui::Text("Volume: %d", voice.GetVolume());
 									ImGui::Text("Fine Tune: %f", voice.GetFineTune());
 
-									ImGui::Text("Attack 1 Level(%%): %f", static_cast<double>(voice.GetAttack1Level()));
-									ImGui::Text("Attack 2 Level(%%): %f", static_cast<double>(voice.GetAttack2Level()));
-									ImGui::Text("Decay 1 Level(%%): %f", static_cast<double>(voice.GetDecay1Level()));
-									ImGui::Text("Decay 2 Level(%%): %f", static_cast<double>(voice.GetDecay2Level()));
-									ImGui::Text("Release 1 Level(%%): %f", static_cast<double>(voice.GetRelease1Level()));
-									ImGui::Text("Release 2 Level(%%): %f", static_cast<double>(voice.GetRelease2Level()));
+									ImGui::Text("Release Env: %f", voice.GetAmpEnv().GetRelease1Sec());
+
 									ImGui::TreePop();
 								}
 

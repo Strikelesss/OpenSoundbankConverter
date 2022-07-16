@@ -151,15 +151,13 @@ std::string VoiceDefinitions::GetMIDINoteFromKey(const uint32_t key)
 
 std::string_view VoiceDefinitions::GetFilterTypeFromByte(const uint8_t b)
 {
-	const auto byteToInt(static_cast<uint32_t>(b));
-
-		// TODO: more conversions
-	switch (byteToInt)
+	// TODO: more conversions
+	switch (b)
 	{
-		case 127u: { return E4BVariables::filterTypes[0]; }
-		case 0u: { return E4BVariables::filterTypes[2]; }
-		case 1u: { return E4BVariables::filterTypes[1]; }
-		case 157u: { return E4BVariables::filterTypes[49]; }
+		case 127ui8: { return E4BVariables::filterTypes[0]; }
+		case 0ui8: { return E4BVariables::filterTypes[2]; }
+		case 1ui8: { return E4BVariables::filterTypes[1]; }
+		case 157ui8: { return E4BVariables::filterTypes[49]; }
 		default: { return "null"; }
 	}
 }
@@ -172,23 +170,10 @@ uint16_t VoiceDefinitions::ConvertByteToFilterFrequency(const std::uint8_t b)
 
 double VoiceDefinitions::ConvertByteToFineTune(const std::int8_t b)
 {
-	// TODO: calculate fine tune (-100 = 192, 100 = 64)
-	// values for bytes: 1.56 = 1, 3.13 = 2
-	return 1.562666666666 * b;
+	return ((b - 64i8) * 1.5625) + 100.0;
 }
 
 double VoiceDefinitions::ConvertByteToFilterQ(const std::uint8_t b)
 {
-	// 127 = 100
-		// 126 = 99.2
-		// 125 = 98.4
-		// 62 = 48.8
-		// 29 = 22.8
-		// 19 = 15
-		// 5 = 4.7
-		// 1 = 0.8
-		// 0 = 0
-
-		// TODO: calculate filter Q
-	return 0.785947461 * b + 0.17062;
+	return GetBottomSectionPercent(b);
 }
