@@ -166,13 +166,14 @@ void E4BViewer::Render()
 						{
 							if (ImGui::Button("Extract Sequence"))
 							{
-								std::array<wchar_t, MAX_PATH> szFileName{};
+								auto seqPath(std::filesystem::path(seq.GetName()).wstring());
+								seqPath.resize(MAX_PATH);
 
 								OPENFILENAME ofn{};
 								ofn.lStructSize = sizeof(ofn);
 								ofn.hwndOwner = nullptr;
 								ofn.lpstrFilter = _T(".mid");
-								ofn.lpstrFile = szFileName.data();
+								ofn.lpstrFile = seqPath.data();
 								ofn.nMaxFile = MAX_PATH;
 								ofn.Flags = OFN_EXPLORER;
 								ofn.lpstrDefExt = _T("mid");

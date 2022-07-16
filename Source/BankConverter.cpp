@@ -5,6 +5,10 @@
 #include <iostream>
 #include <sf2cute.hpp>
 
+// temp includes, TODO: make save file function in a header
+#include <Windows.h>
+#include <tchar.h>
+
 int16_t SF2Converter::FilterFrequencyToCents(const uint16_t freq)
 {
 	const auto K(1200 / std::log10(2));
@@ -121,8 +125,24 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 
 	try 
 	{
-		std::ofstream ofs(std::filesystem::current_path().append(bankName + ".sf2"), std::ios::binary);
-		sf2.Write(ofs);
+		auto sf2Path(std::filesystem::path(bankName).wstring());
+		sf2Path.resize(MAX_PATH);
+
+		OPENFILENAME ofn{};
+		ofn.lStructSize = sizeof(ofn);
+		ofn.hwndOwner = nullptr;
+		ofn.lpstrFilter = _T(".sf2");
+		ofn.lpstrFile = sf2Path.data();
+		ofn.nMaxFile = MAX_PATH;
+		ofn.Flags = OFN_EXPLORER;
+		ofn.lpstrDefExt = _T("sf2");
+
+		if (GetSaveFileName(&ofn))
+		{
+			std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
+			sf2.Write(ofs);
+		}
+
 		return true;
 	}
 	catch (const std::fstream::failure& e) 
