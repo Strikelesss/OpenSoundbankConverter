@@ -3,6 +3,9 @@
 #include <string_view>
 #include <vector>
 
+constexpr auto CURVE_TIME_A = 0.00177687;
+constexpr auto CURVE_TIME_B = 1.09405;
+
 /*
  * Data
  */

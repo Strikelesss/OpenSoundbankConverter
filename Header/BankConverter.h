@@ -10,6 +10,7 @@ namespace SF2Converter
 	constexpr auto SF2_FILTER_MAX_FREQ = 13500i16;
 
 	[[nodiscard]] int16_t FilterFrequencyToCents(uint16_t freq);
+	[[nodiscard]] int16_t secToTimecent(double sec);
 }
 
 struct BankConverter final

@@ -12,6 +12,7 @@ namespace VoiceDefinitions
 	[[nodiscard]] uint16_t ConvertByteToFilterFrequency(uint8_t b);
 	[[nodiscard]] double ConvertByteToFineTune(int8_t b);
 	[[nodiscard]] double ConvertByteToFilterQ(uint8_t b);
+
 	[[nodiscard]] constexpr float GetBottomSectionPercent(const uint8_t value)
 	{
 		return static_cast<float>(value) * 100.f / 127.f;
