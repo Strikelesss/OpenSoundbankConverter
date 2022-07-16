@@ -40,20 +40,20 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 	{
 		reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
 
+		uint32_t chunkLen(0u);
+		reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
+
+		chunkLen = _byteswap_ulong(chunkLen);
+
+		uint32_t chunkLocation(0u);
+		reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + sizeof(uint32_t));
+
+		chunkLocation = _byteswap_ulong(chunkLocation);
+
+		lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
+
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_PRESET_TAG.data(), E4BVariables::EMU4_E4_PRESET_TAG.length()) == 0)
 		{
-			uint32_t chunkLen(0u);
-			reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
-
-			chunkLen = _byteswap_ulong(chunkLen);
-
-			uint32_t chunkLocation(0u);
-			reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + E4BVariables::CHUNK_NAME_LEN);
-
-			chunkLocation = _byteswap_ulong(chunkLocation);
-
-			lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
-
 			E4Preset preset;
 			reader.readTypeAtLocation(&preset, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, PRESET_DATA_READ_SIZE);
 
@@ -104,18 +104,6 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		{
 			if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()) == 0)
 			{
-				uint32_t chunkLen(0u);
-				reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
-
-				chunkLen = _byteswap_ulong(chunkLen);
-
-				uint32_t chunkLocation(0u);
-				reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + E4BVariables::CHUNK_NAME_LEN);
-
-				chunkLocation = _byteswap_ulong(chunkLocation);
-
-				lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
-
 				E4Sample sample;
 				reader.readTypeAtLocation(&sample, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, SAMPLE_DATA_READ_SIZE);
 
@@ -145,18 +133,6 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			{
 				if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_SEQ_TAG.data(), E4BVariables::EMU4_E4_SEQ_TAG.length()) == 0)
 				{
-					uint32_t chunkLen(0u);
-					reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
-
-					chunkLen = _byteswap_ulong(chunkLen);
-
-					uint32_t chunkLocation(0u);
-					reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + E4BVariables::CHUNK_NAME_LEN);
-
-					chunkLocation = _byteswap_ulong(chunkLocation);
-
-					lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
-
 					E4Sequence seq;
 					reader.readTypeAtLocation(&seq, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET);
 
