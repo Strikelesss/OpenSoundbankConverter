@@ -67,29 +67,33 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 
 				// Envelope
 
-				const auto ampAttack(SF2Converter::secToTimecent(voice.GetAmpEnv().GetAttack1Sec()));
-				if(ampAttack > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttack)); }
+				const auto ampAttackSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetAttack1Sec()));
+				if(ampAttackSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
 
-				const auto ampDecay(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay1Sec()));
-				if(ampDecay > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecay)); }
+				const auto ampDecayLevel(voice.GetAmpEnv().GetDecay1Level());
+				const auto ampDecaySec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay1Sec()));
+				if(ampDecayLevel < 100.f && ampDecaySec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
 
-				//const auto ampSustain(SF2Converter::secs_to_timecents(voice.GetAmpEnv().GetDecay2Sec()));
-				//if(ampSustain > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, ampSustain)); }
+				//const auto ampSustainLevel(voice.GetAmpEnv().GetDecay2Level());
+				//const auto ampSustainSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay2Sec()));
+				//if(ampSustainLevel < 100.f && ampSustainSec > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, ampSustainSec)); }
 
-				const auto ampRelease(SF2Converter::secToTimecent(voice.GetAmpEnv().GetRelease1Sec()));
-				if(ampRelease > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseVolEnv, ampRelease)); }
+				const auto ampReleaseSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetRelease1Sec()));
+				if(ampReleaseSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseVolEnv, ampReleaseSec)); }
 
-				const auto filterAttack(SF2Converter::secToTimecent(voice.GetFilterEnv().GetAttack1Sec()));
-				if(filterAttack > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttack)); }
+				const auto filterAttackSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetAttack1Sec()));
+				if(filterAttackSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttackSec)); }
 
-				const auto filterDecay(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay1Sec()));
-				if(filterDecay > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecay)); }
+				const auto filterDecayLevel(voice.GetFilterEnv().GetDecay1Level());
+				const auto filterDecaySec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay1Sec()));
+				if(filterDecayLevel < 100.f && filterDecaySec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
 
-				//const auto filterSustain(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay2Sec()));
-				//if(filterSustain > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, filterSustain)); }
+				//const auto filterSustainLevel(voice.GetFilterEnv().GetDecay2Level());
+				//const auto filterSustainSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay2Sec()));
+				//if(filterSustainLevel < 100.f && filterSustainSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, filterSustainSec)); }
 
-				const auto filterRelease(SF2Converter::secToTimecent(voice.GetFilterEnv().GetRelease1Sec()));
-				if(filterRelease != 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseModEnv, filterRelease)); }
+				const auto filterReleaseSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetRelease1Sec()));
+				if(filterReleaseSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseModEnv, filterReleaseSec)); }
 
 				// Filters
 
@@ -97,7 +101,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string& bank
 				if(filterFreqCents >= 1500i16 && filterFreqCents < 13500i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, filterFreqCents)); }
 
 				const auto filterQ(voice.GetFilterQ());
-				if(filterQ > 0.) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.))); }
+				if(filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
 
 				// Amplifier / Oscillator
 

@@ -2,6 +2,7 @@
 #include "Header/E4BVariables.h"
 #include <cmath>
 
+// TODO: convert to array instead of switch
 std::string VoiceDefinitions::GetMIDINoteFromKey(const uint32_t key)
 {
 	switch (key)
@@ -173,7 +174,7 @@ double VoiceDefinitions::ConvertByteToFineTune(const std::int8_t b)
 	return ((b - 64i8) * 1.5625) + 100.0;
 }
 
-double VoiceDefinitions::ConvertByteToFilterQ(const std::uint8_t b)
+float VoiceDefinitions::ConvertByteToFilterQ(const std::uint8_t b)
 {
 	return GetBottomSectionPercent(b);
 }

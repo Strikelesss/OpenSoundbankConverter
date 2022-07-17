@@ -112,7 +112,7 @@ struct E4Voice final
 	[[nodiscard]] int8_t GetPan() const { return m_pan; }
 	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
 	[[nodiscard]] double GetFineTune() const;
-	[[nodiscard]] double GetFilterQ() const;
+	[[nodiscard]] float GetFilterQ() const;
 	[[nodiscard]] std::string_view GetFilterType() const;
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
@@ -120,7 +120,9 @@ struct E4Voice final
 
 private:
 	uint16_t m_totalVoiceSize = 0i16;
-	std::array<int8_t, 10> m_possibleRedundant2{};
+	int8_t m_possibleRedundant1 = 0i8;
+	int8_t m_group = 0i8;
+	std::array<int8_t, 8> m_possibleRedundant2{};
 	uint8_t m_lowZone = 0ui8;
 	uint8_t m_lowFade = 0ui8;
 	uint8_t m_highFade = 0ui8;
@@ -130,35 +132,39 @@ private:
 	std::array<int8_t, 2> m_possibleRedundant3{};
 	uint8_t m_maxVelocity = 0ui8;
 
-	std::array<int8_t, 14> m_possibleRedundant4{};
+	std::array<int8_t, 12> m_possibleRedundant4{};
+	int8_t m_transpose = 0i8;
+	int8_t m_coarseTune = 0i8;
 	int8_t m_fineTune = 0i8;
-	std::array<int8_t, 4> m_possibleRedundant5{};
+	int8_t m_possibleRedundant5 = 0i8;
+	bool m_fixedPitch = false;
+	std::array<int8_t, 2> m_possibleRedundant6{};
 	int8_t m_chorusWidth = 0i8;
 
 	int8_t m_chorusAmount = 0i8;
-	std::array<int8_t, 11> m_possibleRedundant6{};
+	std::array<int8_t, 11> m_possibleRedundant7{};
 	int8_t m_volume = 0i8;
 	int8_t m_pan = 0i8;
-	std::array<int8_t, 2> m_possibleRedundant7{};
+	std::array<int8_t, 2> m_possibleRedundant8{};
 
 	uint8_t m_filterType = 0ui8;
-	int8_t m_possibleRedundant8 = 0i8;
+	int8_t m_possibleRedundant9 = 0i8;
 	uint8_t m_filterFrequency = 0ui8;
 	uint8_t m_filterQ = 0ui8;
 
-	std::array<int8_t, 48> m_possibleRedundant9{};
+	std::array<int8_t, 48> m_possibleRedundant10{};
 
 	E4Envelope m_ampEnv{}; // 120
 
-	std::array<int8_t, 2> m_possibleRedundant10{}; // 122
+	std::array<int8_t, 2> m_possibleRedundant11{}; // 122
 
 	E4Envelope m_filterEnv{}; // 134
 
-	std::array<int8_t, 2> m_possibleRedundant11{}; // 136
+	std::array<int8_t, 2> m_possibleRedundant12{}; // 136
 
 	E4Envelope m_auxEnv{}; // 148
 
-	std::array<int8_t, 2> m_possibleRedundant12{}; // 150
+	std::array<int8_t, 2> m_possibleRedundant13{}; // 150
 
 	E4LFO m_lfo1{}; // 158
 	E4LFO m_lfo2{}; // 166
@@ -211,7 +217,7 @@ private:
 struct E4VoiceResult final
 {
 	explicit E4VoiceResult(const uint8_t sampleIndex, const uint8_t originalKey, const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, 
-		const int8_t pan, const int8_t volume, const double fineTune, const double filterQ, const std::string_view filterType, const std::pair<uint8_t, uint8_t> zone, 
+		const int8_t pan, const int8_t volume, const double fineTune, const float filterQ, const std::string_view filterType, const std::pair<uint8_t, uint8_t> zone, 
 		const std::pair<uint8_t, uint8_t> velocity, const E4Envelope& ampEnv, const E4Envelope& filterEnv, const E4Envelope& auxEnv) : m_zone(zone), m_velocity(velocity), m_filterType(filterType),
 		m_fineTune(fineTune), m_filterQ(filterQ), m_volume(volume), m_pan(pan), m_filterFrequency(filterFreq), m_chorusAmount(chorusAmount), m_chorusWidth(chorusWidth), m_originalKey(originalKey), 
 		m_sampleIndex(sampleIndex), m_ampEnv(ampEnv), m_filterEnv(filterEnv), m_auxEnv(auxEnv) {}
@@ -225,7 +231,7 @@ struct E4VoiceResult final
 	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
 	[[nodiscard]] float GetChorusAmount() const { return m_chorusAmount; }
 	[[nodiscard]] float GetChorusWidth() const { return m_chorusWidth; }
-	[[nodiscard]] double GetFilterQ() const { return m_filterQ; }
+	[[nodiscard]] float GetFilterQ() const { return m_filterQ; }
 	[[nodiscard]] double GetFineTune() const { return m_fineTune; }
 	[[nodiscard]] const std::string_view& GetFilterType() const { return m_filterType; }
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
@@ -237,7 +243,7 @@ private:
 	std::pair<uint8_t, uint8_t> m_velocity{0ui8, 0ui8};
 	std::string_view m_filterType;
 	double m_fineTune = 0.;
-	double m_filterQ = 0.;
+	float m_filterQ = 0.f;
 	int8_t m_volume = 0;
 	int8_t m_pan = 0;
 	uint16_t m_filterFrequency = 0;

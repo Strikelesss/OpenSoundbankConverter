@@ -1,5 +1,4 @@
 #include "Header/E4BFunctions.h"
-#include <fstream>
 #include "Header/BinaryReader.h"
 #include "Header/E4Preset.h"
 #include "Header/E4Sample.h"
@@ -96,7 +95,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 							voice.GetVelocityRange(), voice.GetAmpEnv(), voice.GetFilterEnv(), voice.GetAuxEnv()));
 					}
 
-					voicePos += static_cast<unsigned long long>(voiceSize);
+					voicePos += static_cast<uint64_t>(voiceSize);
 				}
 			}
 		}

@@ -22,7 +22,7 @@ double E4Voice::GetFineTune() const
 	return VoiceDefinitions::ConvertByteToFineTune(m_fineTune);
 }
 
-double E4Voice::GetFilterQ() const
+float E4Voice::GetFilterQ() const
 {
 	return VoiceDefinitions::ConvertByteToFilterQ(m_filterQ);
 }
