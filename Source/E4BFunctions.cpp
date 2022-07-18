@@ -5,8 +5,9 @@
 
 uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 {
-	if ((sample.m_format & E4BVariables::STEREO_SAMPLE) == E4BVariables::STEREO_SAMPLE || 
-		(sample.m_format & E4BVariables::STEREO_SAMPLE_2) == E4BVariables::STEREO_SAMPLE_2) { return 2u; }
+	const auto& format(sample.GetFormat());
+	if ((format & E4BVariables::STEREO_SAMPLE) == E4BVariables::STEREO_SAMPLE || 
+		(format & E4BVariables::STEREO_SAMPLE_2) == E4BVariables::STEREO_SAMPLE_2) { return 2u; }
 
 	return 1u;
 }
@@ -35,6 +36,8 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 
 	const uint32_t numChunks(initialChunkLength / E4BVariables::CONTENT_CHUNK_LEN);
 	uint32_t lastLoc(0u);
+	uint8_t currentSampleIndex(0ui8);
+
 	for(uint32_t i(0); i < numChunks; ++i)
 	{
 		reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
@@ -74,7 +77,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						E4VoiceEndData voiceEnd;
 						reader.readTypeAtLocation(&voiceEnd, voicePos + VOICE_DATA_SIZE + k * VOICE_END_DATA_SIZE, VOICE_END_DATA_READ_SIZE);
 
-						auto zoneRange(numVoiceEnds > 1 ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
+						auto zoneRange(numVoiceEnds > 1ull ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
 
 						// Account for the odd 'multisample' stuff
 						if(numVoiceEnds > 1ull)
@@ -90,9 +93,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 							}
 						}
 
-						presetResult.AddVoice(E4VoiceResult(voiceEnd.GetSampleIndex() - 1ui8, voiceEnd.GetOriginalKey(), voice.GetChorusWidth(), voice.GetChorusAmount(), 
-							voice.GetFilterFrequency(), voice.GetPan(), voice.GetVolume(), voice.GetFineTune(), voice.GetFilterQ(), voice.GetFilterType(), zoneRange, 
-							voice.GetVelocityRange(), voice.GetAmpEnv(), voice.GetFilterEnv(), voice.GetAuxEnv()));
+						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex()));
 					}
 
 					voicePos += static_cast<uint64_t>(voiceSize);
@@ -104,19 +105,32 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()) == 0)
 			{
 				E4Sample sample;
-				reader.readTypeAtLocation(&sample, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, SAMPLE_DATA_READ_SIZE);
+				reader.readTypeAtLocation(&sample, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET - 4ull, SAMPLE_DATA_READ_SIZE);
 
 				const auto wavStart(chunkLocation + E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET);
 				//const auto numSamples((chunkLength - E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
 
+				// 0 = ???
+				// 1 = start of left channel (SAMPLE_DATA_READ_SIZE)
+				// 2 = start of right channel (0 if mono)
+				// 3 = last sample of left channel (lastLoc - wavStart - 2 + SAMPLE_DATA_READ_SIZE)
+				// 4 = last sample of right channel (3 - SAMPLE_DATA_READ_SIZE)
+				// 5 = loop start (* 2 + SAMPLE_DATA_READ_SIZE)
+				// 6 = 5 - SAMPLE_DATA_READ_SIZE
+				// 7 = loop end (* 2 + SAMPLE_DATA_READ_SIZE)
+				// 8 = 7 - SAMPLE_DATA_READ_SIZE
+
 				uint32_t loopStart(0u);
 				uint32_t loopEnd(0u);
-				const auto canLoop(sample.m_format & SAMPLE_LOOP_FLAG);
+				const auto canLoop((sample.GetFormat() & SAMPLE_LOOP_FLAG) == SAMPLE_LOOP_FLAG);
 				if(canLoop)
 				{
-					loopStart = (sample.m_params[5] - SAMPLE_LOOP_OFFSET) / 2u;
-					loopEnd = (sample.m_params[7] - SAMPLE_LOOP_OFFSET) / 2u;
+					const auto& params(sample.GetParams());
+					loopStart = (params[5] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
+					loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
 				}
+
+				const auto& params(sample.GetParams());
 
 				const auto& bankData(reader.GetData());
 
@@ -125,8 +139,11 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 
 				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
 
-				outResult.AddSample(E4SampleResult(std::string(sample.m_name), std::move(convertedSampleData), sample.m_sample_rate, GetSampleChannels(sample), 
-					canLoop, sample.m_format & SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
+				outResult.MapSampleIndex(sample.GetIndex(), currentSampleIndex);
+				outResult.AddSample(E4SampleResult(sample.GetName(), std::move(convertedSampleData), sample.GetSampleRate(), GetSampleChannels(sample), 
+					canLoop, (sample.GetFormat() & SAMPLE_RELEASE_FLAG) == SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
+
+				++currentSampleIndex;
 			}
 			else
 			{
@@ -136,7 +153,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 					reader.readTypeAtLocation(&seq, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET);
 
 					const auto& bankData(reader.GetData());
-					std::vector seqData(&bankData[chunkLocation + E4BVariables::CHUNK_NAME_OFFSET + E4BVariables::NAME_SIZE], &bankData[lastLoc]);
+					std::vector seqData(&bankData[chunkLocation + E4BVariables::CHUNK_NAME_OFFSET + E4BVariables::E4_MAX_NAME_LEN], &bankData[lastLoc]);
 
 					outResult.AddSequence(E4SequenceResult(seq.GetName(), std::move(seqData)));
 				}
@@ -152,7 +169,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		reader.readTypeAtLocation(tempChunkName.data(), lastLoc, E4BVariables::CHUNK_NAME_LEN);
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_EMSt_TAG.data(), E4BVariables::EMU4_EMSt_TAG.length()) != 0) { return false; }
 
-		E4Emst emst;
+		E4EMSt emst;
 		reader.readTypeAtLocation(&emst, lastLoc + 4ull);
 
 		outResult.SetCurrentPreset(emst.GetCurrentPreset());

@@ -38,7 +38,8 @@
 *.app
 
 .vs/*
-x64/*
+Build/*
+Intermediate/*
 
 *.user
 *.txt

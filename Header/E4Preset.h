@@ -1,7 +1,10 @@
 #pragma once
 #include "E4BVariables.h"
 #include <string_view>
+#include <unordered_map>
 #include <vector>
+
+struct BinaryWriter;
 
 constexpr auto CURVE_TIME_A = 0.00177687;
 constexpr auto CURVE_TIME_B = 1.09405;
@@ -12,6 +15,10 @@ constexpr auto CURVE_TIME_B = 1.09405;
 
 struct E4VoiceEndData final
 {
+	E4VoiceEndData() = default;
+	explicit E4VoiceEndData(const uint8_t sampleIndex, const uint8_t originalKey) :
+		m_sampleIndex(sampleIndex), m_originalKey(originalKey) {}
+
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
 		return std::make_pair(m_lowZone, m_highZone);
@@ -20,12 +27,14 @@ struct E4VoiceEndData final
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] uint8_t GetOriginalKey() const { return m_originalKey; }
 
-private:
-	uint8_t m_lowZone = 0ui8;
-	std::array<int8_t, 2> m_possibleRedundant1{};
-	uint8_t m_highZone = 0ui8;
+	[[nodiscard]] bool write(BinaryWriter& writer);
 
-	std::array<int8_t, 5> m_possibleRedundant2{};
+private:
+	int8_t m_lowZone = 0i8;
+	std::array<int8_t, 2> m_possibleRedundant1{};
+	int8_t m_highZone = 127i8;
+
+	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\0', static_cast<char>(127)};
 	uint8_t m_sampleIndex = 0ui8;
 	std::array<int8_t, 2> m_possibleRedundant3{};
 
@@ -50,33 +59,47 @@ struct E4Envelope final
 	[[nodiscard]] float GetRelease1Level() const;
 	[[nodiscard]] double GetRelease2Sec() const;
 	[[nodiscard]] float GetRelease2Level() const;
+
+	[[nodiscard]] bool write(BinaryWriter& writer);
 private:
 	uint8_t m_attack1Sec = 0ui8;
-	uint8_t m_attack1Level = 0ui8;
+	int8_t m_attack1Level = 127ui8;
 	uint8_t m_attack2Sec = 0ui8;
-	uint8_t m_attack2Level = 0ui8;
+	int8_t m_attack2Level = 127ui8;
 
 	uint8_t m_decay1Sec = 0ui8;
-	uint8_t m_decay1Level = 0ui8;
+	int8_t m_decay1Level = 127ui8;
 	uint8_t m_decay2Sec = 0ui8;
-	uint8_t m_decay2Level = 0ui8;
+	int8_t m_decay2Level = 127ui8;
 
 	uint8_t m_release1Sec = 0ui8;
-	uint8_t m_release1Level = 0ui8;
+	int8_t m_release1Level = 127ui8;
 	uint8_t m_release2Sec = 0ui8;
-	uint8_t m_release2Level = 0ui8;
+	int8_t m_release2Level = 0ui8;
 };
 
 struct E4LFO final
 {
+	[[nodiscard]] bool write(BinaryWriter& writer);
 private:
-	uint8_t m_rate = 0ui8;
+	uint8_t m_rate = 13ui8;
 	uint8_t m_possibleRedundant1 = 0ui8;
 	uint8_t m_delay = 0ui8;
 	uint8_t m_variation = 0ui8;
 	bool m_keySync = true; // 00 = on, 01 = off (make sure to flip when getting)
 
 	std::array<int8_t, 3> m_possibleRedundant2{};
+};
+
+struct E4Cord final
+{
+	E4Cord() = default;
+	explicit E4Cord(const uint8_t source, const uint8_t dest, const uint8_t amount) : m_source(source), m_dest(dest), m_amount(amount) {}
+private:
+	uint8_t m_source = 0ui8;
+	uint8_t m_dest = 0ui8;
+	uint8_t m_amount = 0ui8;
+	uint8_t m_possibleRedundant1 = 0ui8;
 };
 
 struct E4Voice final
@@ -118,11 +141,18 @@ struct E4Voice final
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
 	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
 
+	E4Voice() = default;
+
+	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t pan, int8_t volume, double fineTune, 
+		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity);
+
+	[[nodiscard]] bool write(BinaryWriter& writer);
+
 private:
 	uint16_t m_totalVoiceSize = 0i16;
-	int8_t m_possibleRedundant1 = 0i8;
+	int8_t m_possibleRedundant1 = 1i8;
 	int8_t m_group = 0i8;
-	std::array<int8_t, 8> m_possibleRedundant2{};
+	std::array<int8_t, 8> m_possibleRedundant2{'\0', 'd'};
 	uint8_t m_lowZone = 0ui8;
 	uint8_t m_lowFade = 0ui8;
 	uint8_t m_highFade = 0ui8;
@@ -132,7 +162,7 @@ private:
 	std::array<int8_t, 2> m_possibleRedundant3{};
 	uint8_t m_maxVelocity = 0ui8;
 
-	std::array<int8_t, 12> m_possibleRedundant4{};
+	std::array<int8_t, 12> m_possibleRedundant4{'\0', '\0', '\0', static_cast<char>(127)};
 	int8_t m_transpose = 0i8;
 	int8_t m_coarseTune = 0i8;
 	int8_t m_fineTune = 0i8;
@@ -141,13 +171,13 @@ private:
 	std::array<int8_t, 2> m_possibleRedundant6{};
 	int8_t m_chorusWidth = 0i8;
 
-	int8_t m_chorusAmount = 0i8;
+	int8_t m_chorusAmount = 128i8;
 	std::array<int8_t, 11> m_possibleRedundant7{};
 	int8_t m_volume = 0i8;
 	int8_t m_pan = 0i8;
 	std::array<int8_t, 2> m_possibleRedundant8{};
 
-	uint8_t m_filterType = 0ui8;
+	uint8_t m_filterType = 127ui8;
 	int8_t m_possibleRedundant9 = 0i8;
 	uint8_t m_filterFrequency = 0ui8;
 	uint8_t m_filterQ = 0ui8;
@@ -169,13 +199,18 @@ private:
 	E4LFO m_lfo1{}; // 158
 	E4LFO m_lfo2{}; // 166
 
-	std::array<int8_t, 2> m_padding{}; // 168
+	std::array<int8_t, 22> m_possibleRedundant14{}; // 188
+
+	std::array<E4Cord, 24> m_cords{E4Cord(12ui8, 64ui8, 0ui8), E4Cord(16ui8, 48ui8, 1ui8), E4Cord(96ui8, 48ui8, 0ui8), E4Cord(17ui8, 170ui8, 1ui8),
+		E4Cord(12ui8, 56ui8, 0ui8), E4Cord(80ui8, 56ui8, 0ui8), E4Cord(8ui8, 56ui8, 0ui8), E4Cord(22ui8, 8ui8, 127ui8)}; // 284
+
+	std::array<int8_t, 4> m_padding{}; // 288
 };
 
 // In the file, excluding the 'end' size of VOICE_END_DATA_SIZE
 constexpr auto VOICE_DATA_SIZE = 284ull;
 
-constexpr auto VOICE_DATA_READ_SIZE = 164ull; // was 120
+constexpr auto VOICE_DATA_READ_SIZE = 284ull;
 
 struct E4Preset final
 {
@@ -184,7 +219,7 @@ struct E4Preset final
 	[[nodiscard]] uint16_t GetPresetDataSize() const { return _byteswap_ushort(m_presetDataSize); }
 
 private:
-	std::array<char, E4BVariables::NAME_SIZE> m_name{};
+	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{};
 	uint16_t m_presetDataSize = 0ui16;
 	uint16_t m_numVoices = 0ui16;
 
@@ -192,23 +227,33 @@ private:
 };
 
 constexpr auto PRESET_DATA_READ_SIZE = 20ull;
+constexpr auto TOTAL_PRESET_DATA_SIZE = 82ull;
 
 struct E4Sequence final
 {
 	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
 
 private:
-	std::array<char, E4BVariables::NAME_SIZE> m_name{};
+	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{};
 };
 
-struct E4Emst final
+// Startup?
+struct E4EMSt final
 {
 	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
-
+	[[nodiscard]] bool write(BinaryWriter& writer);
 private:
-	std::array<int8_t, 27> m_possibleRedundantA{};
+	uint32_t m_dataSize = 0u;
+	std::array<int8_t, 2> m_possibleRedundant1{};
+	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{};
+	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\2'};
 	uint8_t m_currentPreset = 0ui8;
+	std::array<int8_t, 28> m_possibleRedundant3{static_cast<char>(127), '\0', '\0', '\0', '\0', static_cast<char>(255),
+		'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', static_cast<char>(127)};
 };
+
+constexpr auto TOTAL_EMST_DATA_SIZE = 56ull;
+constexpr auto EMST_DATA_READ_SIZE = 28ull;
 
 /*
  * Results
@@ -216,11 +261,9 @@ private:
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const uint8_t sampleIndex, const uint8_t originalKey, const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, 
-		const int8_t pan, const int8_t volume, const double fineTune, const float filterQ, const std::string_view filterType, const std::pair<uint8_t, uint8_t> zone, 
-		const std::pair<uint8_t, uint8_t> velocity, const E4Envelope& ampEnv, const E4Envelope& filterEnv, const E4Envelope& auxEnv) : m_zone(zone), m_velocity(velocity), m_filterType(filterType),
-		m_fineTune(fineTune), m_filterQ(filterQ), m_volume(volume), m_pan(pan), m_filterFrequency(filterFreq), m_chorusAmount(chorusAmount), m_chorusWidth(chorusWidth), m_originalKey(originalKey), 
-		m_sampleIndex(sampleIndex), m_ampEnv(ampEnv), m_filterEnv(filterEnv), m_auxEnv(auxEnv) {}
+	explicit E4VoiceResult(const E4Voice& voice, std::pair<uint8_t, uint8_t>&& zoneRange, const uint8_t originalKey, const uint8_t sampleIndex) : m_zone(std::move(zoneRange)), m_velocity(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()),
+		m_fineTune(voice.GetFineTune()), m_filterQ(voice.GetFilterQ()), m_volume(voice.GetVolume()), m_pan(voice.GetPan()), m_filterFrequency(voice.GetFilterFrequency()), m_chorusAmount(voice.GetChorusAmount()),
+		m_chorusWidth(voice.GetChorusWidth()), m_originalKey(originalKey), m_sampleIndex(sampleIndex), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()) {}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetZoneRange() const { return m_zone; }
@@ -244,9 +287,9 @@ private:
 	std::string_view m_filterType;
 	double m_fineTune = 0.;
 	float m_filterQ = 0.f;
-	int8_t m_volume = 0;
-	int8_t m_pan = 0;
-	uint16_t m_filterFrequency = 0;
+	int8_t m_volume = 0i8;
+	int8_t m_pan = 0i8;
+	uint16_t m_filterFrequency = 0ui16;
 	float m_chorusAmount = 0.f;
 	float m_chorusWidth = 0.f;
 	uint8_t m_originalKey = 0ui8;
@@ -313,11 +356,13 @@ struct E4Result final
 	[[nodiscard]] const std::vector<E4PresetResult>& GetPresets() const { return m_presets; }
 	[[nodiscard]] const std::vector<E4SampleResult>& GetSamples() const { return m_samples; }
 	[[nodiscard]] const std::vector<E4SequenceResult>& GetSequences() const { return m_sequences; }
+	[[nodiscard]] const std::unordered_map<uint16_t, uint8_t>& GetSampleIndexMapping() const { return m_sampleIndexMapping; }
 	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
 
 	void Clear() { m_presets.clear(); m_samples.clear(); m_sequences.clear(); }
 	void SetCurrentPreset(const uint8_t preset) { m_currentPreset = preset; }
 	E4PresetResult& AddPreset(E4PresetResult&& preset) { return m_presets.emplace_back(std::move(preset)); }
+	void MapSampleIndex(const uint16_t sampleIndex, const uint8_t sampleIndex2) { m_sampleIndexMapping[sampleIndex] = sampleIndex2; }
 	void AddSample(E4SampleResult&& sample) { m_samples.emplace_back(std::move(sample)); }
 	void AddSequence(E4SequenceResult&& seq) { m_sequences.emplace_back(std::move(seq)); }
 
@@ -325,5 +370,6 @@ private:
 	uint8_t m_currentPreset = 255ui8;
 	std::vector<E4PresetResult> m_presets{};
 	std::vector<E4SampleResult> m_samples{};
+	std::unordered_map<uint16_t, uint8_t> m_sampleIndexMapping{};
 	std::vector<E4SequenceResult> m_sequences{};
 };

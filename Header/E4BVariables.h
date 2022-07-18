@@ -19,11 +19,11 @@ namespace E4BVariables
 	constexpr std::string_view EMU4_EMSt_TAG = "EMSt";
 	constexpr auto EMU4_E3_SAMPLE_OFFSET = CHUNK_SIZE + 2u;
 
-	constexpr auto NAME_SIZE = 16u;
+	constexpr auto E4_MAX_NAME_LEN = 16u;
 	constexpr auto NUM_SAMPLE_PARAMETERS = 9u;
 	constexpr auto NUM_EXTRA_SAMPLE_PARAMETERS = 8u;
 
-	constexpr size_t EMU4_E3_SAMPLE_REDUNDANT_OFFSET = EMU4_E3_SAMPLE_OFFSET + NAME_SIZE + (sizeof(unsigned int) * NUM_SAMPLE_PARAMETERS) +
+	constexpr size_t EMU4_E3_SAMPLE_REDUNDANT_OFFSET = EMU4_E3_SAMPLE_OFFSET + E4_MAX_NAME_LEN + (sizeof(unsigned int) * NUM_SAMPLE_PARAMETERS) +
 		sizeof(unsigned int) + sizeof(unsigned int) + (sizeof(unsigned int) * NUM_EXTRA_SAMPLE_PARAMETERS);
 
 	constexpr auto STEREO_SAMPLE = 0x00700001;

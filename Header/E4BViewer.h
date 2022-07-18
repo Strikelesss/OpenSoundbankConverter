@@ -6,11 +6,25 @@
 #include <wrl/client.h>
 #include "E4Preset.h"
 
+enum struct EBankType
+{
+	SF2,
+	EOS
+};
+
 namespace E4BViewer
 {
-	constexpr std::string_view EMU4_FILE_EXT_A = ".E4B";
-	constexpr std::string_view EMU4_FILE_EXT_B = ".e4b";
 	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
+
+	inline bool strCIPred(const uint8_t a, const uint8_t b)
+	{
+		return std::tolower(a) == std::tolower(b);
+	}
+
+	inline bool strCI(const std::string& a, const std::string& b)
+	{
+		return a.length() == b.length() && std::equal(b.begin(), b.end(), a.begin(), strCIPred);
+	}
 
 	[[nodiscard]] bool CreateResources();
 	void Render();
@@ -27,8 +41,12 @@ namespace E4BViewer
 
 	inline HWND m_hwnd;
 	inline E4Result m_currentResult;
+	inline size_t m_selectedFilter = SIZE_MAX;
+	inline std::array<char, 5> m_currentAddedExtension{};
 	inline std::vector<std::filesystem::path> m_bankFiles{};
-	inline bool m_isBankOpened = false;
+	inline bool m_isBankOpened = false, m_isFilterOpened = false;
+	inline std::vector<std::string> m_filterExtensions{".E4B"};
+	inline EBankType m_currentBankType;
 	inline std::filesystem::path m_openedBank;
 	inline std::filesystem::path m_currentSearchPath;
 }

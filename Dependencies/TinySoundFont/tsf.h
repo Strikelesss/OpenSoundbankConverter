@@ -45,6 +45,9 @@
 #ifndef TSF_INCLUDE_TSF_INL
 #define TSF_INCLUDE_TSF_INL
 
+// Custom
+#include <vector>
+
 #ifdef __cplusplus
 extern "C" {
 #  define CPP_DEFAULT0 = 0
@@ -325,10 +328,14 @@ typedef char tsf_char20[20];
 
 #define TSF_FourCCEquals(value1, value2) (value1[0] == value2[0] && value1[1] == value2[1] && value1[2] == value2[2] && value1[3] == value2[3])
 
+	// Custom
+struct tsf_hydra_shdr { tsf_char20 sampleName; tsf_u32 start, end, startLoop, endLoop, sampleRate; tsf_u8 originalPitch; tsf_s8 pitchCorrection; tsf_u16 sampleLink, sampleType; };
+
 struct tsf
 {
 	struct tsf_preset* presets;
 	float* fontSamples;
+	short* samplesAsShort;
 	struct tsf_voice* voices;
 	struct tsf_channels* channels;
 
@@ -341,6 +348,9 @@ struct tsf
 	float outSampleRate;
 	float globalGainDB;
 	int* refCount;
+
+	// Custom
+	std::vector<tsf_hydra_shdr> shdrs{};
 };
 
 #ifndef TSF_NO_STDIO
@@ -386,9 +396,9 @@ enum { TSF_SEGMENT_NONE, TSF_SEGMENT_DELAY, TSF_SEGMENT_ATTACK, TSF_SEGMENT_HOLD
 
 struct tsf_hydra
 {
-	struct tsf_hydra_phdr *phdrs; struct tsf_hydra_pbag *pbags; struct tsf_hydra_pmod *pmods;
-	struct tsf_hydra_pgen *pgens; struct tsf_hydra_inst *insts; struct tsf_hydra_ibag *ibags;
-	struct tsf_hydra_imod *imods; struct tsf_hydra_igen *igens; struct tsf_hydra_shdr *shdrs;
+	struct tsf_hydra_phdr* phdrs; struct tsf_hydra_pbag* pbags; struct tsf_hydra_pmod* pmods;
+	struct tsf_hydra_pgen* pgens; struct tsf_hydra_inst* insts; struct tsf_hydra_ibag* ibags;
+	struct tsf_hydra_imod* imods; struct tsf_hydra_igen* igens; struct tsf_hydra_shdr* shdrs;
 	int phdrNum, pbagNum, pmodNum, pgenNum, instNum, ibagNum, imodNum, igenNum, shdrNum;
 };
 
@@ -401,7 +411,6 @@ struct tsf_hydra_inst { tsf_char20 instName; tsf_u16 instBagNdx; };
 struct tsf_hydra_ibag { tsf_u16 instGenNdx, instModNdx; };
 struct tsf_hydra_imod { tsf_u16 modSrcOper, modDestOper; tsf_s16 modAmount; tsf_u16 modAmtSrcOper, modTransOper; };
 struct tsf_hydra_igen { tsf_u16 genOper; union tsf_hydra_genamount genAmount; };
-struct tsf_hydra_shdr { tsf_char20 sampleName; tsf_u32 start, end, startLoop, endLoop, sampleRate; tsf_u8 originalPitch; tsf_s8 pitchCorrection; tsf_u16 sampleLink, sampleType; };
 
 #define TSFR(FIELD) stream->read(stream->data, &i->FIELD, sizeof(i->FIELD));
 static void tsf_hydra_read_phdr(struct tsf_hydra_phdr* i, struct tsf_stream* stream) { TSFR(presetName) TSFR(preset) TSFR(bank) TSFR(presetBagNdx) TSFR(library) TSFR(genre) TSFR(morphology) }
@@ -436,6 +445,12 @@ struct tsf_region
 	int freqModLFO, modLfoToPitch;
 	float delayVibLFO;
 	int freqVibLFO, vibLfoToPitch;
+
+	// Custom
+	uint8_t sampleIndex;
+	uint8_t padding1, padding2, padding3;
+
+	uint32_t padding4, padding5, padding6;
 };
 
 struct tsf_preset
@@ -819,7 +834,9 @@ static int tsf_load_presets(tsf* res, struct tsf_hydra *hydra, unsigned int font
 								zoneRegion.delayVibLFO = (zoneRegion.delayVibLFO < -11950.0f ? 0.0f : tsf_timecents2Secsf(zoneRegion.delayVibLFO));
 
 								// Fixup sample positions
-								pshdr = &hydra->shdrs[pigen->genAmount.wordAmount];
+								const auto sampleIndex(pigen->genAmount.wordAmount);
+								pshdr = &hydra->shdrs[sampleIndex];
+								zoneRegion.sampleIndex = static_cast<uint8_t>(sampleIndex);
 								zoneRegion.offset += pshdr->start;
 								zoneRegion.end += pshdr->end;
 								zoneRegion.loop_start += pshdr->startLoop;
@@ -861,12 +878,14 @@ static int tsf_load_presets(tsf* res, struct tsf_hydra *hydra, unsigned int font
 	return 1;
 }
 
-static int tsf_load_samples(float** fontSamples, unsigned int* fontSampleCount, struct tsf_riffchunk *chunkSmpl, struct tsf_stream* stream)
+static int tsf_load_samples(short** sampleAsShort, float** fontSamples, unsigned int* fontSampleCount, struct tsf_riffchunk *chunkSmpl, struct tsf_stream* stream)
 {
 	// Read sample data into float format buffer.
 	float* out; unsigned int samplesLeft, samplesToRead, samplesToConvert;
+	short* outShort;
 	samplesLeft = *fontSampleCount = chunkSmpl->size / sizeof(short);
 	out = *fontSamples = (float*)TSF_MALLOC(samplesLeft * sizeof(float));
+	outShort = *sampleAsShort = (short*)TSF_MALLOC(samplesLeft * sizeof(short));
 	if (!out) return 0;
 	for (; samplesLeft; samplesLeft -= samplesToRead)
 	{
@@ -877,7 +896,11 @@ static int tsf_load_samples(float** fontSamples, unsigned int* fontSampleCount, 
 		// Convert from signed 16-bit to float.
 		for (samplesToConvert = samplesToRead; samplesToConvert > 0; --samplesToConvert)
 			// If we ever need to compile for big-endian platforms, we'll need to byte-swap here.
-			*out++ = (float)(*in++ / 32767.0);
+		{
+			short sample(*in++);
+			*out++ = (float)(sample / 32767.0);
+			*outShort++ = sample;
+		}
 	}
 	return 1;
 }
@@ -1240,6 +1263,7 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 	struct tsf_riffchunk chunkList;
 	struct tsf_hydra hydra;
 	float* fontSamples = TSF_NULL;
+	short* samplesAsShort = TSF_NULL;
 	unsigned int fontSampleCount = 0;
 
 	if (!tsf_riffchunk_read(TSF_NULL, &chunkHead, stream) || !TSF_FourCCEquals(chunkHead.id, "sfbk"))
@@ -1282,9 +1306,9 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 		{
 			while (tsf_riffchunk_read(&chunkList, &chunk, stream))
 			{
-				if (TSF_FourCCEquals(chunk.id, "smpl") && !fontSamples && chunk.size >= sizeof(short))
+				if (TSF_FourCCEquals(chunk.id, "smpl") && !fontSamples && !samplesAsShort && chunk.size >= sizeof(short))
 				{
-					if (!tsf_load_samples(&fontSamples, &fontSampleCount, &chunk, stream)) goto out_of_memory;
+					if (!tsf_load_samples(&samplesAsShort, &fontSamples, &fontSampleCount, &chunk, stream)) { goto out_of_memory; }
 				}
 				else stream->skip(stream->data, chunk.size);
 			}
@@ -1305,7 +1329,10 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 		if (!res) goto out_of_memory;
 		TSF_MEMSET(res, 0, sizeof(tsf));
 		if (!tsf_load_presets(res, &hydra, fontSampleCount)) goto out_of_memory;
+
 		res->fontSamples = fontSamples;
+		res->samplesAsShort = samplesAsShort;
+		res->shdrs = std::vector<tsf_hydra_shdr>(hydra.shdrs, std::next(hydra.shdrs, hydra.shdrNum)); // Custom
 		fontSamples = TSF_NULL; //don't free below
 		res->outSampleRate = 44100.0f;
 	}

@@ -3,12 +3,11 @@
 #include "backends/imgui_impl_win32.h"
 #include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
+#include "Header/BinaryWriter.h"
 #include "Header/E4BFunctions.h"
 #include "Header/VoiceDefinitions.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
-
-#include "Header/BinaryWriter.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -199,13 +198,28 @@ void E4BViewer::Render()
 					ImGui::TreePop();
 				}
 
-				ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
-				if(ImGui::Button("Convert To SF2"))
+				if(m_currentBankType == EBankType::SF2)
 				{
-					constexpr BankConverter converter;
-					if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string()))
+					ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
+					if(ImGui::Button("Convert To E4B"))
 					{
-						OutputDebugStringA("Successfully converted to SF2! \n");
+						constexpr BankConverter converter;
+						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string()))
+						{
+							OutputDebugStringA("Successfully converted to E4B! \n");
+						}
+					}
+				}
+				else
+				{
+					ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
+					if(ImGui::Button("Convert To SF2"))
+					{
+						constexpr BankConverter converter;
+						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string()))
+						{
+							OutputDebugStringA("Successfully converted to SF2! \n");
+						}
 					}
 				}
 
@@ -229,7 +243,22 @@ void E4BViewer::Render()
 							reader.readFile(file);
 
 							m_currentResult.Clear();
-							if(E4BFunctions::ProcessE4BFile(reader, m_currentResult)) { m_isBankOpened = true; }
+
+							const auto ext(m_openedBank.extension().string());
+							if (strCI(ext, ".SF2"))
+							{
+								m_currentBankType = EBankType::SF2;
+								m_isBankOpened = true;
+							}
+							else
+							{
+								if (strCI(ext, ".E4B"))
+								{
+									m_currentBankType = EBankType::EOS;
+									if (E4BFunctions::ProcessE4BFile(reader, m_currentResult)) { m_isBankOpened = true; }
+								}
+							}
+
 							break;
 						}
 					}
@@ -240,7 +269,7 @@ void E4BViewer::Render()
 		}
 
 		if(ImGui::Button("Refresh Files")) { RefreshFiles(); }
-		if (ImGui::Button("Change Path"))
+		if(ImGui::Button("Change Path"))
 		{
 			BROWSEINFO bInfo{};
 			bInfo.hwndOwner = m_hwnd;
@@ -258,6 +287,62 @@ void E4BViewer::Render()
 				SHGetPathFromIDList(lpItem, filename.data());
 				m_currentSearchPath = std::filesystem::path(filename.data());
 				RefreshFiles();
+			}
+		}
+
+		if(ImGui::Button("Filter"))
+		{
+			ImGui::OpenPopup("File Filter");
+			m_isFilterOpened = true;
+		}
+
+		if (m_isFilterOpened)
+		{
+			ImGui::SetNextWindowSize(ImVec2(windowSize.x / 1.25f, windowSize.y / 1.25f));
+			if (ImGui::BeginPopupModal("File Filter", &m_isFilterOpened, ImGuiWindowFlags_NoResize))
+			{
+				if (ImGui::BeginListBox("Filters"))
+				{
+					size_t index(0);
+					for (const auto& filter : m_filterExtensions)
+					{
+						if (ImGui::Selectable(filter.c_str()))
+						{
+							m_selectedFilter = index;
+						}
+
+						++index;
+					}
+
+					ImGui::EndListBox();
+				}
+
+				ImGui::InputText("Filter Name", m_currentAddedExtension.data(), m_currentAddedExtension.size());
+
+				if(ImGui::Button("Add"))
+				{
+					if(std::ranges::find_if(m_filterExtensions, [](auto& extension){ return strCI(extension, m_currentAddedExtension.data()); }) 
+						== m_filterExtensions.end()) { m_filterExtensions.emplace_back(m_currentAddedExtension.data()); }
+
+					for (char& i : m_currentAddedExtension) { i = '\0'; }
+					RefreshFiles();
+				}
+
+				ImGui::BeginDisabled(m_selectedFilter >= m_filterExtensions.size());
+
+				if(ImGui::Button("Remove"))
+				{
+					if(m_selectedFilter < m_filterExtensions.size())
+					{
+						m_filterExtensions.erase(std::next(m_filterExtensions.begin(), static_cast<ptrdiff_t>(m_selectedFilter)));
+						m_selectedFilter = SIZE_MAX;
+						RefreshFiles();
+					}
+				}
+
+				ImGui::EndDisabled();
+
+				ImGui::EndPopup();
 			}
 		}
 
@@ -283,8 +368,9 @@ void E4BViewer::RefreshFiles()
 			{
 				const auto& path(it.path());
 				const auto ext(path.extension().string());
-				if (ext.length() == EMU4_FILE_EXT_A.length() && (std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_A.begin(), EMU4_FILE_EXT_A.end())
-					|| std::ranges::equal(ext.begin(), ext.end(), EMU4_FILE_EXT_B.begin(), EMU4_FILE_EXT_B.end()))) {
+
+				if(std::ranges::find_if(m_filterExtensions, [&](auto& extension) { return strCI(extension, ext); }) != m_filterExtensions.end())
+				{
 					m_bankFiles.emplace_back(path);
 				}
 			}
