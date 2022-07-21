@@ -98,6 +98,8 @@ struct E4Cord final
 {
 	E4Cord() = default;
 	explicit E4Cord(const uint8_t source, const uint8_t dest, const uint8_t amount) : m_source(source), m_dest(dest), m_amount(amount) {}
+
+	[[nodiscard]] uint8_t GetSource() const { return m_source; }
 private:
 	uint8_t m_source = 0ui8;
 	uint8_t m_dest = 0ui8;
@@ -148,7 +150,7 @@ struct E4Voice final
 	E4Voice() = default;
 
 	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t pan, int8_t volume, double fineTune, double keyDelay,
-		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& cord);
+		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord);
 
 	[[nodiscard]] bool write(BinaryWriter& writer);
 

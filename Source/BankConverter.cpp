@@ -323,16 +323,16 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 														const auto numVoicesBS(_byteswap_ushort(numVoices));
 														if (writer.writeType(&numVoicesBS))
 														{
-															constexpr std::array<char, 30> redundantPresetData1{};
-															if (writer.writeType(redundantPresetData1.data(), sizeof(char) * redundantPresetData1.size()))
+															constexpr std::array<int8_t, 30> redundantPresetData1{};
+															if (writer.writeType(redundantPresetData1.data(), sizeof(int8_t) * redundantPresetData1.size()))
 															{
 																constexpr std::array<uint8_t, 8> redundantPresetData2{ 'R', '#', '\0', '~', static_cast<uint8_t>(255),
 																	static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(255) };
 
 																if (writer.writeType(redundantPresetData2.data(), sizeof(char) * redundantPresetData2.size()))
 																{
-																	constexpr std::array<char, 24> redundantPresetData3{};
-																	if (writer.writeType(redundantPresetData3.data(), sizeof(char) * redundantPresetData3.size()))
+																	constexpr std::array<int8_t, 24> redundantPresetData3{};
+																	if (writer.writeType(redundantPresetData3.data(), sizeof(int8_t) * redundantPresetData3.size()))
 																	{
 																		for (uint16_t j(0ui16); j < numVoices; ++j)
 																		{
@@ -341,7 +341,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -region.pan : region.pan * 100.f));
 																			const auto volume(static_cast<int8_t>(region.attenuation));
 																			const auto fineTune(static_cast<double>(region.tune));
-																			const auto filterQ(static_cast<float>(region.initialFilterQ)); // TODO: check if this needs to be multiplied
+																			const auto filterQ(static_cast<float>(region.initialFilterQ) / 10.f);
 
 																			const auto filterEnvPos(region.modEnvToFilterFc);
 																			const auto filterEnvPosHz(tsf_cents2Hertz(std::abs(static_cast<float>(filterEnvPos))));

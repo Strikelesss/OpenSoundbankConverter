@@ -41,12 +41,19 @@ std::string_view E4Voice::GetFilterType() const
 }
 
 E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t pan, const int8_t volume, const double fineTune, const double keyDelay, const float filterQ, 
-	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& cord) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
+	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
 	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)),
 	m_chorusAmount(VoiceDefinitions::ConvertPercentToByteF(chorusAmount)), m_volume(volume), m_pan(pan), m_filterFrequency(VoiceDefinitions::ConvertFilterFrequencyToByte(filterFreq)),
 	m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)), m_ampEnv(ampEnv), m_filterEnv(filterEnv)
 {
-	m_cords[8] = cord; // TODO: assign cord by source
+	for(auto& cord : m_cords)
+	{
+		if(cord.GetSource() == filterEnvPosCord.GetSource())
+		{
+			cord = filterEnvPosCord;
+			break;
+		}
+	}
 }
 
 bool E4Voice::write(BinaryWriter& writer)

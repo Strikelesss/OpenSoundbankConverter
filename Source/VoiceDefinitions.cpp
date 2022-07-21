@@ -201,10 +201,10 @@ double VoiceDefinitions::GetTimeFromCurve(const uint8_t b)
 	return sec + std::fmod(sec, 2.);
 	*/
 
-	return 1.3 * (std::pow(2., 0.1 * static_cast<double>(b - 59ui8)));
+	return 1.3 * std::pow(2., 0.089 * static_cast<double>(b - 59ui8));
 }
 
 uint8_t VoiceDefinitions::GetByteFromSec(const double sec)
 {
-	return static_cast<uint8_t>(std::abs((std::log2(sec / 1.3)) / 0.1 + 59.));
+	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.089 + 59.));
 }
