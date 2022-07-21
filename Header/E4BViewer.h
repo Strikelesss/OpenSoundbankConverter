@@ -44,8 +44,8 @@ namespace E4BViewer
 	inline size_t m_selectedFilter = SIZE_MAX;
 	inline std::array<char, 5> m_currentAddedExtension{};
 	inline std::vector<std::filesystem::path> m_bankFiles{};
-	inline bool m_isBankOpened = false, m_isFilterOpened = false;
-	inline std::vector<std::string> m_filterExtensions{".E4B"};
+	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false;
+	inline std::vector<std::string> m_filterExtensions{".E4B", ".SF2"};
 	inline EBankType m_currentBankType;
 	inline std::filesystem::path m_openedBank;
 	inline std::filesystem::path m_currentSearchPath;

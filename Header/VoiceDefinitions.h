@@ -11,8 +11,11 @@ namespace VoiceDefinitions
 	[[nodiscard]] std::string_view GetFilterTypeFromByte(uint8_t b);
 	[[nodiscard]] uint16_t ConvertByteToFilterFrequency(uint8_t b);
 	[[nodiscard]] uint8_t ConvertFilterFrequencyToByte(uint16_t freq);
+	[[nodiscard]] int8_t ConvertFineTuneToByte(double fineTune);
 	[[nodiscard]] double ConvertByteToFineTune(int8_t b);
 	[[nodiscard]] float ConvertByteToFilterQ(uint8_t b);
+	[[nodiscard]] double GetTimeFromCurve(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromSec(double sec);
 
 	[[nodiscard]] constexpr float GetBottomSectionPercent(const uint8_t value)
 	{

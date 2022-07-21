@@ -5,12 +5,18 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+
+#define TSF_IMPLEMENTATION
+#include "Dependencies/TinySoundFont/tsf.h"
+
 #include <sf2cute.hpp>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <commdlg.h>
 #include <tchar.h>
+
+#include "Header/VoiceDefinitions.h"
 
 int16_t SF2Converter::FilterFrequencyToCents(const uint16_t freq)
 {
@@ -24,7 +30,7 @@ int16_t SF2Converter::secToTimecent(const double sec)
 	return static_cast<int16_t>(std::lround(std::log(sec) / std::log(2.) * 1200.));
 }
 
-bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName) const
+bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options) const
 {
 	if(e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty()) { return false; }
 
@@ -107,7 +113,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// Amplifier / Oscillator
 
-			const auto pan(voice.GetPan());
+			const auto pan(options.m_flipPan ? -voice.GetPan() : voice.GetPan());
 			if (pan != 0i8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kPan, static_cast<int16_t>(pan * 10i16))); }
 
 			const auto fineTune(voice.GetFineTune());
@@ -159,10 +165,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 	}
 }
 
-#define TSF_IMPLEMENTATION
-#include "Dependencies/TinySoundFont/tsf.h"
-
-bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName) const
+bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options) const
 {
 	if(exists(bank) && !bankName.empty())
 	{
@@ -203,7 +206,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 					const auto shdrs(sf2->shdrs);
 					for (const auto& shdr : shdrs)
 					{
-						const auto sampleSize(shdr.end);
+						const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
 						if (sampleSize > 0u)
 						{
 							totalSize += E4BVariables::CONTENT_CHUNK_LEN + E4BVariables::CHUNK_NAME_OFFSET + TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize;
@@ -218,10 +221,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 					}
 
 					// EMSt + LENGTH
-					totalSize += static_cast<uint32_t>(E4BVariables::EMU4_EMSt_TAG.length()) + sizeof(uint32_t);
+					totalSize += static_cast<uint32_t>(E4BVariables::EMU4_EMSt_TAG.length());
 
 					// todo: determine length of EMSt, below may be enough if all the other data is redundant (doubtful)
-					totalSize += EMST_DATA_READ_SIZE;
+					totalSize += TOTAL_EMST_DATA_SIZE;
 
 					// Byteswap since E4B requires it
 					totalSize = _byteswap_ulong(totalSize);
@@ -268,12 +271,12 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									uint16_t sampleIndex(0ui16);
 									for (const auto& shdr : shdrs)
 									{
-										const auto sampleSize(shdr.end);
+										const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
 										if (sampleSize > 0u)
 										{
 											if (writer.writeType(E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()))
 											{
-												const uint32_t sampleChunkLen(_byteswap_ulong(TOTAL_SAMPLE_DATA_READ_SIZE + sizeof(uint16_t) * sampleSize));
+												const uint32_t sampleChunkLen(_byteswap_ulong(TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize));
 												if (writer.writeType(&sampleChunkLen))
 												{
 													sampleChunkLocations[sampleIndex] = writer.GetWritePos();
@@ -323,8 +326,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 															constexpr std::array<char, 30> redundantPresetData1{};
 															if (writer.writeType(redundantPresetData1.data(), sizeof(char) * redundantPresetData1.size()))
 															{
-																constexpr std::array redundantPresetData2{ 'R', '#', static_cast<char>(0), '~', static_cast<char>(255),
-																	static_cast<char>(255), static_cast<char>(255), static_cast<char>(255) };
+																constexpr std::array<uint8_t, 8> redundantPresetData2{ 'R', '#', '\0', '~', static_cast<uint8_t>(255),
+																	static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(255) };
 
 																if (writer.writeType(redundantPresetData2.data(), sizeof(char) * redundantPresetData2.size()))
 																{
@@ -335,13 +338,39 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																		{
 																			const auto region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-																			const auto pan(static_cast<int8_t>(region.pan));
+																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -region.pan : region.pan * 100.f));
 																			const auto volume(static_cast<int8_t>(region.attenuation));
 																			const auto fineTune(static_cast<double>(region.tune));
-																			const auto filterQ(static_cast<float>(region.initialFilterQ));
+																			const auto filterQ(static_cast<float>(region.initialFilterQ)); // TODO: check if this needs to be multiplied
 
-																			E4Voice voice(0.f, 0.f, filterFreq, pan, volume, fineTune, filterQ, { region.lokey, region.hikey },
-																				{ region.lovel, region.hivel });
+																			const auto filterEnvPos(region.modEnvToFilterFc);
+																			const auto filterEnvPosHz(tsf_cents2Hertz(std::abs(static_cast<float>(filterEnvPos))));
+
+																			// TODO: find a good value for this
+																			constexpr auto FILTER_FREQUENCY_MAX_HZ(3000.f); // 8372.22363f
+
+																			float filterEnvPosPercent(0.f);
+																			if(filterEnvPos > 0)
+																			{
+																				filterEnvPosPercent = filterEnvPosHz * 100.f / FILTER_FREQUENCY_MAX_HZ;
+																			}
+																			else if(filterEnvPos < 0)
+																			{
+																				filterEnvPosPercent = -filterEnvPosHz * 100.f / FILTER_FREQUENCY_MAX_HZ;
+																			}
+
+																			const auto ampEnv(region.ampenv);
+																			const auto keyDelay(static_cast<double>(ampEnv.delay));
+																			const auto ampAttack(static_cast<double>(ampEnv.attack));
+																			const auto ampRelease(static_cast<double>(ampEnv.release));
+
+																			const auto filterEnv(region.modenv);
+																			const auto filterAttack(static_cast<double>(filterEnv.attack));
+																			const auto filterRelease(static_cast<double>(filterEnv.release));
+
+																			E4Voice voice(0.f, 0.f, filterFreq, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
+																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampRelease), E4Envelope(filterAttack, filterRelease), 
+																				E4Cord(80ui8, 56ui8, VoiceDefinitions::ConvertPercentToByteF(filterEnvPosPercent)));
 
 																			const auto originalKey(static_cast<uint8_t>(region.pitch_keycenter));
 																			E4VoiceEndData voiceEnd(region.sampleIndex, originalKey);
@@ -366,19 +395,19 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									sampleIndex = 0ui16;
 									for (const auto& shdr : shdrs)
 									{
-										const auto sampleSize(shdr.end - shdr.start);
+										const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
 										if (sampleSize > 0u)
 										{
 											const auto currentPos(_byteswap_ulong(static_cast<uint32_t>(writer.GetWritePos())));
 											if (writer.writeTypeAtLocation(&currentPos, sampleChunkLocations[sampleIndex]) && writer.writeType(E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()))
 											{
-												const uint32_t sampleChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_SAMPLE_DATA_READ_SIZE + sizeof(uint16_t) * sampleSize));
+												const uint32_t sampleChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize));
 												if (writer.writeType(&sampleChunkLen))
 												{
 													const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
 													if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(), E4BVariables::E4_MAX_NAME_LEN))
 													{
-														const uint32_t lastSampleLeft(sampleSize * sizeof(uint16_t) - 2ull + TOTAL_SAMPLE_DATA_READ_SIZE);
+														const uint32_t lastSampleLeft(sampleSize - 2ull + TOTAL_SAMPLE_DATA_READ_SIZE);
 
 														uint32_t lastSampleRight(0u);
 														if(lastSampleLeft > TOTAL_SAMPLE_DATA_READ_SIZE)
@@ -424,11 +453,11 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																// todo: support for stereo
 
-																uint32_t format(MONO_SAMPLE);
+																// Release is on by default for E4B since there is a noticable 'pop' after if it isn't on
+																uint32_t format(MONO_SAMPLE | SAMPLE_RELEASE_FLAG);
 
 																const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
-																if(mode == 1) { format |= SAMPLE_LOOP_FLAG; }
-																else if(mode == 3) { format |= SAMPLE_LOOP_FLAG | SAMPLE_RELEASE_FLAG; }
+																if(mode == 1 || mode == 3) { format |= SAMPLE_LOOP_FLAG; }
 
 																if (writer.writeType(&format))
 																{

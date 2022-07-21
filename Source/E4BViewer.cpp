@@ -198,13 +198,14 @@ void E4BViewer::Render()
 					ImGui::TreePop();
 				}
 
+				ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
+
 				if(m_currentBankType == EBankType::SF2)
 				{
-					ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
 					if(ImGui::Button("Convert To E4B"))
 					{
 						constexpr BankConverter converter;
-						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string()))
+						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan)))
 						{
 							OutputDebugStringA("Successfully converted to E4B! \n");
 						}
@@ -212,16 +213,18 @@ void E4BViewer::Render()
 				}
 				else
 				{
-					ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
 					if(ImGui::Button("Convert To SF2"))
 					{
 						constexpr BankConverter converter;
-						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string()))
+						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan)))
 						{
 							OutputDebugStringA("Successfully converted to SF2! \n");
 						}
 					}
 				}
+
+				ImGui::SameLine();
+				ImGui::Checkbox("Flip Pan", &m_flipPan);
 
                 ImGui::EndPopup();
 			}

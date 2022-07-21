@@ -130,10 +130,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 					loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
 				}
 
-				const auto& params(sample.GetParams());
-
 				const auto& bankData(reader.GetData());
-
 				std::vector<int16_t> convertedSampleData;
 				std::vector<uint8_t> sampleData(&bankData[wavStart], &bankData[lastLoc]);
 
@@ -150,7 +147,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 				if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_SEQ_TAG.data(), E4BVariables::EMU4_E4_SEQ_TAG.length()) == 0)
 				{
 					E4Sequence seq;
-					reader.readTypeAtLocation(&seq, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET);
+					reader.readTypeAtLocation(&seq, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, SEQUENCE_DATA_READ_SIZE);
 
 					const auto& bankData(reader.GetData());
 					std::vector seqData(&bankData[chunkLocation + E4BVariables::CHUNK_NAME_OFFSET + E4BVariables::E4_MAX_NAME_LEN], &bankData[lastLoc]);
@@ -170,7 +167,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_EMSt_TAG.data(), E4BVariables::EMU4_EMSt_TAG.length()) != 0) { return false; }
 
 		E4EMSt emst;
-		reader.readTypeAtLocation(&emst, lastLoc + 4ull);
+		reader.readTypeAtLocation(&emst, lastLoc + 4ull, EMST_DATA_READ_SIZE);
 
 		outResult.SetCurrentPreset(emst.GetCurrentPreset());
 	}

@@ -3,6 +3,11 @@
 
 struct E4Result;
 
+struct ConverterOptions final
+{
+	bool m_flipPan = false;
+};
+
 namespace SF2Converter
 {
 	constexpr auto SF2_MAX_NAME_LEN = 20u;
@@ -16,8 +21,8 @@ namespace SF2Converter
 
 struct BankConverter final
 {
-	[[nodiscard]] bool ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName) const;
-	[[nodiscard]] bool ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName) const;
+	[[nodiscard]] bool ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options = {}) const;
+	[[nodiscard]] bool ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options = {}) const;
 private:
 	[[nodiscard]] std::string ConvertNameToEmuName(const std::string_view& name) const;
 	[[nodiscard]] std::string ConvertNameToSFName(const std::string_view& name) const;

@@ -40,33 +40,35 @@ std::string_view E4Voice::GetFilterType() const
 	return VoiceDefinitions::GetFilterTypeFromByte(m_filterType);
 }
 
-E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t pan, const int8_t volume, const double fineTune, const float filterQ, 
-	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first),
-	m_maxVelocity(velocity.second), m_fineTune(VoiceDefinitions::ConvertPercentToByteD(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)),
+E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t pan, const int8_t volume, const double fineTune, const double keyDelay, const float filterQ, 
+	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& cord) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
+	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)),
 	m_chorusAmount(VoiceDefinitions::ConvertPercentToByteF(chorusAmount)), m_volume(volume), m_pan(pan), m_filterFrequency(VoiceDefinitions::ConvertFilterFrequencyToByte(filterFreq)),
-	m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)) {}
+	m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)), m_ampEnv(ampEnv), m_filterEnv(filterEnv)
+{
+	m_cords[8] = cord; // TODO: assign cord by source
+}
 
 bool E4Voice::write(BinaryWriter& writer)
 {
 	const uint16_t totalVoiceSize(_byteswap_ushort(static_cast<uint16_t>(VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 	if (writer.writeType(&totalVoiceSize) && writer.writeType(&m_possibleRedundant1) && writer.writeType(&m_group) && writer.writeType(&m_possibleRedundant2, sizeof(int8_t) * m_possibleRedundant2.size())
-		&& writer.writeType(&m_lowZone) && writer.writeType(&m_lowFade) && writer.writeType(&m_highFade) && writer.writeType(&m_highZone) &&
-		writer.writeType(&m_minVelocity) && writer.writeType(m_possibleRedundant3.data(), sizeof(int8_t) * m_possibleRedundant3.size()) && writer.writeType(&m_maxVelocity)
-		&& writer.writeType(m_possibleRedundant4.data(), sizeof(int8_t) * m_possibleRedundant4.size()) && writer.writeType(&m_transpose) && writer.writeType(&m_coarseTune)
-		&& writer.writeType(&m_fineTune) && writer.writeType(&m_possibleRedundant5) && writer.writeType(&m_fixedPitch) && writer.writeType(m_possibleRedundant6.data(), sizeof(int8_t) * m_possibleRedundant6.size())
-		&& writer.writeType(&m_chorusWidth) && writer.writeType(&m_chorusAmount) && writer.writeType(m_possibleRedundant7.data(), sizeof(int8_t) * m_possibleRedundant7.size()) && writer.writeType(&m_volume)
-		&& writer.writeType(&m_pan) && writer.writeType(m_possibleRedundant8.data(), sizeof(int8_t) * m_possibleRedundant8.size()))
+		&& writer.writeType(&m_lowZone) && writer.writeType(&m_lowFade) && writer.writeType(&m_highFade) && writer.writeType(&m_highZone) && writer.writeType(&m_minVelocity) && writer.writeType(m_possibleRedundant3.data(), sizeof(int8_t) * m_possibleRedundant3.size()) && writer.writeType(&m_maxVelocity)
+		&& writer.writeType(m_possibleRedundant4.data(), sizeof(int8_t) * m_possibleRedundant4.size()) && writer.writeType(&m_keyDelay) && writer.writeType(m_possibleRedundant5.data(), sizeof(int8_t) * m_possibleRedundant5.size()) && writer.writeType(&m_sampleOffset)
+		&& writer.writeType(&m_transpose) && writer.writeType(&m_coarseTune) && writer.writeType(&m_fineTune) && writer.writeType(&m_possibleRedundant6) && writer.writeType(&m_fixedPitch) && writer.writeType(m_possibleRedundant7.data(), sizeof(int8_t) * m_possibleRedundant7.size())
+		&& writer.writeType(&m_chorusWidth) && writer.writeType(&m_chorusAmount) && writer.writeType(m_possibleRedundant8.data(), sizeof(int8_t) * m_possibleRedundant8.size()) && writer.writeType(&m_volume)
+		&& writer.writeType(&m_pan) && writer.writeType(m_possibleRedundant9.data(), sizeof(int8_t) * m_possibleRedundant9.size()))
 	{
-		// If the filter frequency isn't 20,000, pick 2 Pole Lowpass, if it is, pick No Filter
-		const auto filterType(m_filterFrequency < 255ui8 ? 1ui8 : 127ui8);
+		// If the filter frequency isn't 20,000, pick 4 Pole Lowpass, if it is, pick No Filter
+		const auto filterType(m_filterFrequency < 255ui8 ? 0ui8 : 127ui8);
 
-		if (writer.writeType(&filterType) && writer.writeType(&m_possibleRedundant9) && writer.writeType(&m_filterFrequency) && writer.writeType(&m_filterQ) &&
-			writer.writeType(m_possibleRedundant10.data(), sizeof(int8_t) * m_possibleRedundant10.size()))
+		if (writer.writeType(&filterType) && writer.writeType(&m_possibleRedundant10) && writer.writeType(&m_filterFrequency) && writer.writeType(&m_filterQ) &&
+			writer.writeType(m_possibleRedundant11.data(), sizeof(int8_t) * m_possibleRedundant11.size()))
 		{
-			if (m_ampEnv.write(writer) && writer.writeType(m_possibleRedundant11.data(), sizeof(int8_t) * m_possibleRedundant11.size())
-				&& m_filterEnv.write(writer) && writer.writeType(m_possibleRedundant12.data(), sizeof(int8_t) * m_possibleRedundant12.size())
-				&& m_auxEnv.write(writer) && writer.writeType(m_possibleRedundant13.data(), sizeof(int8_t) * m_possibleRedundant13.size())
-				&& m_lfo1.write(writer) && m_lfo2.write(writer) && writer.writeType(m_possibleRedundant14.data(), sizeof(int8_t) * m_possibleRedundant14.size())
+			if (m_ampEnv.write(writer) && writer.writeType(m_possibleRedundant12.data(), sizeof(int8_t) * m_possibleRedundant12.size())
+				&& m_filterEnv.write(writer) && writer.writeType(m_possibleRedundant13.data(), sizeof(int8_t) * m_possibleRedundant13.size())
+				&& m_auxEnv.write(writer) && writer.writeType(m_possibleRedundant14.data(), sizeof(int8_t) * m_possibleRedundant14.size())
+				&& m_lfo1.write(writer) && m_lfo2.write(writer) && writer.writeType(m_possibleRedundant15.data(), sizeof(int8_t) * m_possibleRedundant15.size())
 				&& writer.writeType(m_cords.data(), sizeof(E4Cord) * m_cords.size()))
 			{
 				return true;
@@ -122,15 +124,7 @@ bool E4Envelope::write(BinaryWriter& writer)
 		&& writer.writeType(&m_release1Sec) && writer.writeType(&m_release1Level) && writer.writeType(&m_release2Sec) && writer.writeType(&m_release2Level);
 }
 
-[[nodiscard]] double GetTimeFromCurve(const uint8_t b)
-{
-	//const auto time(SEC_A * std::pow(SEC_B, static_cast<double>(b)));
-	//return time + std::fmod(time, 3.); // fmod gets somewhat closer to the real number, although far off for lower numbers
-
-	const auto percent(static_cast<double>(b) * 14. / 127.);
-	const auto sec((std::pow(2., percent) * 10.) / 1000.);
-	return sec + std::fmod(sec, 2.);
-}
+E4Envelope::E4Envelope(const double attack, const double release) : m_attack1Sec(VoiceDefinitions::GetByteFromSec(attack)), m_release1Sec(VoiceDefinitions::GetByteFromSec(release)) {}
 
 bool E4VoiceEndData::write(BinaryWriter& writer)
 {
@@ -144,28 +138,28 @@ bool E4VoiceEndData::write(BinaryWriter& writer)
 double E4Envelope::GetAttack1Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetAttack1Sec(), 0ui8, 126ui8)];
-	if(m_attack1Sec > 0) { return GetTimeFromCurve(m_attack1Sec); }
+	if(m_attack1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_attack1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetAttack2Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetAttack2Sec(), 0ui8, 126ui8)];
-	if(m_attack2Sec > 0) { return GetTimeFromCurve(m_attack2Sec); }
+	if(m_attack2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_attack2Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay1Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetDecay1Sec(), 0ui8, 126ui8)];
-	if(m_decay1Sec > 0) { return GetTimeFromCurve(m_decay1Sec); }
+	if(m_decay1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_decay1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay2Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetDecay2Sec(), 0ui8, 126ui8)];
-	if(m_decay2Sec > 0) { return GetTimeFromCurve(m_decay2Sec); }
+	if(m_decay2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_decay2Sec); }
 	return 0.;
 }
 
@@ -173,13 +167,13 @@ double E4Envelope::GetRelease1Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetRelease1Sec(), 0ui8, 126ui8)];
 
-	if(m_release1Sec > 0) { return GetTimeFromCurve(m_release1Sec); }
+	if(m_release1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_release1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetRelease2Sec() const
 {
 	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetRelease2Sec(), 0ui8, 126ui8)];
-	if(m_release2Sec > 0) { return GetTimeFromCurve(m_release2Sec); }
+	if(m_release2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_release2Sec); }
 	return 0.;
 }

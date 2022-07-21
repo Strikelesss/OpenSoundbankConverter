@@ -166,7 +166,6 @@ std::string_view VoiceDefinitions::GetFilterTypeFromByte(const uint8_t b)
 uint16_t VoiceDefinitions::ConvertByteToFilterFrequency(const std::uint8_t b)
 {
 	const double t(static_cast<double>(b) / 255.);
-	const auto hm(t * (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) + MIN_FREQUENCY_57);
 	return static_cast<uint16_t>(std::round(std::exp(t * (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) + MIN_FREQUENCY_57)));
 }
 
@@ -176,12 +175,36 @@ uint8_t VoiceDefinitions::ConvertFilterFrequencyToByte(const uint16_t freq)
 	return static_cast<uint8_t>(std::round((std::log(freq) - MIN_FREQUENCY_57) / (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) * 255.));
 }
 
+int8_t VoiceDefinitions::ConvertFineTuneToByte(const double fineTune)
+{
+	return static_cast<int8_t>((fineTune - 100.) / 1.5625 + 64.);
+}
+
 double VoiceDefinitions::ConvertByteToFineTune(const std::int8_t b)
 {
-	return ((b - 64i8) * 1.5625) + 100.;
+	return (b - 64i8) * 1.5625 + 100.;
 }
 
 float VoiceDefinitions::ConvertByteToFilterQ(const std::uint8_t b)
 {
 	return GetBottomSectionPercent(b);
+}
+
+double VoiceDefinitions::GetTimeFromCurve(const uint8_t b)
+{
+	//const auto time(SEC_A * std::pow(SEC_B, static_cast<double>(b)));
+	//return time + std::fmod(time, 3.); // fmod gets somewhat closer to the real number, although far off for lower numbers
+
+	/*
+	const auto percent(static_cast<double>(b) * 14. / 127.);
+	const auto sec((std::pow(2., percent) * 10.) / 1000.);
+	return sec + std::fmod(sec, 2.);
+	*/
+
+	return 1.3 * (std::pow(2., 0.1 * static_cast<double>(b - 59ui8)));
+}
+
+uint8_t VoiceDefinitions::GetByteFromSec(const double sec)
+{
+	return static_cast<uint8_t>(std::abs((std::log2(sec / 1.3)) / 0.1 + 59.));
 }
