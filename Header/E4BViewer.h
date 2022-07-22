@@ -14,8 +14,6 @@ enum struct EBankType
 
 namespace E4BViewer
 {
-	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
-
 	inline bool strCIPred(const uint8_t a, const uint8_t b)
 	{
 		return std::tolower(a) == std::tolower(b);
@@ -32,6 +30,11 @@ namespace E4BViewer
 
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+	// Rendering
+
+	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
+
+	inline HWND m_hwnd;
 	inline Microsoft::WRL::ComPtr<ID3D11Device> m_device;
 	inline Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_deviceContext;
 	inline Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapchain;
@@ -39,14 +42,15 @@ namespace E4BViewer
 	inline float m_currentWindowSizeX = 0.f;
 	inline float m_currentWindowSizeY = 0.f;
 
-	inline HWND m_hwnd;
+	// UI Specific
+
 	inline E4Result m_currentResult;
 	inline size_t m_selectedFilter = SIZE_MAX;
 	inline std::array<char, 5> m_currentAddedExtension{};
 	inline std::vector<std::filesystem::path> m_bankFiles{};
-	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false;
 	inline std::vector<std::string> m_filterExtensions{".E4B", ".SF2"};
-	inline EBankType m_currentBankType;
 	inline std::filesystem::path m_openedBank;
 	inline std::filesystem::path m_currentSearchPath;
+	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false;
+	inline EBankType m_currentBankType;
 }

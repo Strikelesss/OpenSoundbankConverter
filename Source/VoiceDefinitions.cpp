@@ -171,7 +171,6 @@ uint16_t VoiceDefinitions::ConvertByteToFilterFrequency(const std::uint8_t b)
 
 uint8_t VoiceDefinitions::ConvertFilterFrequencyToByte(const uint16_t freq)
 {
-	//return static_cast<uint8_t>(std::round(71.67247483378216856959 * std::log(static_cast<double>(freq) / 57.)));
 	return static_cast<uint8_t>(std::round((std::log(freq) - MIN_FREQUENCY_57) / (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) * 255.));
 }
 

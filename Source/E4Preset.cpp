@@ -144,43 +144,36 @@ bool E4VoiceEndData::write(BinaryWriter& writer)
 
 double E4Envelope::GetAttack1Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetAttack1Sec(), 0ui8, 126ui8)];
 	if(m_attack1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_attack1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetAttack2Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetAttack2Sec(), 0ui8, 126ui8)];
 	if(m_attack2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_attack2Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay1Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetDecay1Sec(), 0ui8, 126ui8)];
 	if(m_decay1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_decay1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay2Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetDecay2Sec(), 0ui8, 126ui8)];
 	if(m_decay2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_decay2Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetRelease1Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetRelease1Sec(), 0ui8, 126ui8)];
-
 	if(m_release1Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_release1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetRelease2Sec() const
 {
-	//return E4BVariables::envelopeValues[std::clamp(m_ampEnvelope.GetRelease2Sec(), 0ui8, 126ui8)];
 	if(m_release2Sec > 0) { return VoiceDefinitions::GetTimeFromCurve(m_release2Sec); }
 	return 0.;
 }

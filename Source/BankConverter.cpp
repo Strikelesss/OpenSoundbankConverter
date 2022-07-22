@@ -2,6 +2,7 @@
 #include "Header/BinaryWriter.h"
 #include "Header/E4Preset.h"
 #include "Header/E4Sample.h"
+#include "Header/VoiceDefinitions.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -15,8 +16,6 @@
 #include <Windows.h>
 #include <commdlg.h>
 #include <tchar.h>
-
-#include "Header/VoiceDefinitions.h"
 
 int16_t SF2Converter::FilterFrequencyToCents(const uint16_t freq)
 {
@@ -189,7 +188,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 			const tsf* sf2(tsf_load_filename(bank.string().c_str()));
 			if(sf2 != nullptr)
 			{
-				if(writer.writeType(E4BVariables::EMU4_FORM_TAG.data(), E4BVariables::EMU4_FORM_TAG.length()))
+				if(writer.writeType(E4BVariables::EOS_FORM_TAG.data(), E4BVariables::EOS_FORM_TAG.length()))
 				{
 					const auto numPresets(sf2->presetNum);
 					if(numPresets <= 0) { return false; }
@@ -197,11 +196,11 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 					std::unordered_map<size_t, size_t> presetChunkLocations{}, sampleChunkLocations{};
 
 					// E4B0 + TOC1 + LENGTH
-					auto totalSize(static_cast<uint32_t>(E4BVariables::EMU4_E4_FORMAT_TAG.length() + E4BVariables::EMU4_TOC_TAG.length() + sizeof(uint32_t)));
+					auto totalSize(static_cast<uint32_t>(E4BVariables::EOS_E4_FORMAT_TAG.length() + E4BVariables::EOS_TOC_TAG.length() + sizeof(uint32_t)));
 
-					totalSize += numPresets * (E4BVariables::CONTENT_CHUNK_LEN + E4BVariables::CHUNK_NAME_OFFSET + TOTAL_PRESET_DATA_SIZE);
+					totalSize += numPresets * (E4BVariables::EOS_CHUNK_TOTAL_LEN + E4BVariables::EOS_CHUNK_NAME_OFFSET + TOTAL_PRESET_DATA_SIZE);
 
-					uint32_t tocSize(numPresets * E4BVariables::CONTENT_CHUNK_LEN);
+					uint32_t tocSize(numPresets * E4BVariables::EOS_CHUNK_TOTAL_LEN);
 
 					const auto shdrs(sf2->shdrs);
 					for (const auto& shdr : shdrs)
@@ -209,8 +208,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 						const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
 						if (sampleSize > 0u)
 						{
-							totalSize += E4BVariables::CONTENT_CHUNK_LEN + E4BVariables::CHUNK_NAME_OFFSET + TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize;
-							tocSize += E4BVariables::CONTENT_CHUNK_LEN;
+							totalSize += E4BVariables::EOS_CHUNK_TOTAL_LEN + E4BVariables::EOS_CHUNK_NAME_OFFSET + TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize;
+							tocSize += E4BVariables::EOS_CHUNK_TOTAL_LEN;
 						}
 					} 
 
@@ -220,8 +219,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 						totalSize += preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE);
 					}
 
-					// EMSt + LENGTH
-					totalSize += static_cast<uint32_t>(E4BVariables::EMU4_EMSt_TAG.length());
+					totalSize += static_cast<uint32_t>(E4BVariables::EOS_EMSt_TAG.length());
 
 					// todo: determine length of EMSt, below may be enough if all the other data is redundant (doubtful)
 					totalSize += TOTAL_EMST_DATA_SIZE;
@@ -232,9 +230,9 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 					if(writer.writeType(&totalSize))
 					{
-						if(writer.writeType(E4BVariables::EMU4_E4_FORMAT_TAG.data(), E4BVariables::EMU4_E4_FORMAT_TAG.length()))
+						if(writer.writeType(E4BVariables::EOS_E4_FORMAT_TAG.data(), E4BVariables::EOS_E4_FORMAT_TAG.length()))
 						{
-							if(writer.writeType(E4BVariables::EMU4_TOC_TAG.data(), E4BVariables::EMU4_TOC_TAG.length()))
+							if(writer.writeType(E4BVariables::EOS_TOC_TAG.data(), E4BVariables::EOS_TOC_TAG.length()))
 							{
 								if(writer.writeType(&tocSize))
 								{
@@ -246,7 +244,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 									for(int i(0); i < numPresets; ++i)
 									{
-										if(writer.writeType(E4BVariables::EMU4_E4_PRESET_TAG.data(), E4BVariables::EMU4_E4_PRESET_TAG.length()))
+										if(writer.writeType(E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()))
 										{
 											const auto preset(sf2->presets[i]);
 											const uint32_t presetChunkLen(_byteswap_ulong(TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
@@ -258,7 +256,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 												if(writer.writeType(&presetChunkLoc))
 												{
 													const auto presetNum(static_cast<uint16_t>(i));
-													if(writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::E4_MAX_NAME_LEN)
+													if(writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN)
 														&& writer.writeType(&redundant16))
 													{
 														OutputDebugStringA("wrote preset \n");
@@ -274,7 +272,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 										const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
 										if (sampleSize > 0u)
 										{
-											if (writer.writeType(E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()))
+											if (writer.writeType(E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()))
 											{
 												const uint32_t sampleChunkLen(_byteswap_ulong(TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize));
 												if (writer.writeType(&sampleChunkLen))
@@ -286,7 +284,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 													{
 														const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
 														if(writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(), 
-															E4BVariables::E4_MAX_NAME_LEN) && writer.writeType(&redundant16))
+															E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundant16))
 														{
 															OutputDebugStringA("wrote sample \n");
 														}
@@ -307,14 +305,14 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									for(int i(0); i < numPresets; ++i)
 									{
 										const auto currentPos(_byteswap_ulong(static_cast<uint32_t>(writer.GetWritePos())));
-										if (writer.writeTypeAtLocation(&currentPos, presetChunkLocations[i]) && writer.writeType(E4BVariables::EMU4_E4_PRESET_TAG.data(), E4BVariables::EMU4_E4_PRESET_TAG.length()))
+										if (writer.writeTypeAtLocation(&currentPos, presetChunkLocations[i]) && writer.writeType(E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()))
 										{
 											const auto preset(sf2->presets[i]);
 											uint32_t presetChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 											if (writer.writeType(&presetChunkLen))
 											{
 												const auto presetNum(static_cast<uint16_t>(i));
-												if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::E4_MAX_NAME_LEN))
+												if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
 												{
 													const auto presetDataSize(_byteswap_ushort(static_cast<uint16_t>(TOTAL_PRESET_DATA_SIZE)));
 													if (writer.writeType(&presetDataSize))
@@ -399,13 +397,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 										if (sampleSize > 0u)
 										{
 											const auto currentPos(_byteswap_ulong(static_cast<uint32_t>(writer.GetWritePos())));
-											if (writer.writeTypeAtLocation(&currentPos, sampleChunkLocations[sampleIndex]) && writer.writeType(E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()))
+											if (writer.writeTypeAtLocation(&currentPos, sampleChunkLocations[sampleIndex]) && writer.writeType(E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()))
 											{
 												const uint32_t sampleChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_SAMPLE_DATA_READ_SIZE + sampleSize));
 												if (writer.writeType(&sampleChunkLen))
 												{
 													const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
-													if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(), E4BVariables::E4_MAX_NAME_LEN))
+													if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
 													{
 														const uint32_t lastSampleLeft(sampleSize - 2ull + TOTAL_SAMPLE_DATA_READ_SIZE);
 
@@ -454,10 +452,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																// todo: support for stereo
 
 																// Release is on by default for E4B since there is a noticable 'pop' after if it isn't on
-																uint32_t format(MONO_SAMPLE | SAMPLE_RELEASE_FLAG);
+																uint32_t format(MONO_SAMPLE | E4SampleVariables::SAMPLE_RELEASE_FLAG);
 
 																const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
-																if(mode == 1 || mode == 3) { format |= SAMPLE_LOOP_FLAG; }
+																if(mode == 1 || mode == 3) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
 
 																if (writer.writeType(&format))
 																{
@@ -483,7 +481,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									}
 
 									E4EMSt emst;
-									if (writer.writeType(E4BVariables::EMU4_EMSt_TAG.data(), E4BVariables::EMU4_EMSt_TAG.length()) && emst.write(writer))
+									if (writer.writeType(E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) && emst.write(writer))
 									{
 										OutputDebugStringA("wrote emst data \n");
 									}
@@ -504,11 +502,11 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 std::string BankConverter::ConvertNameToEmuName(const std::string_view& name) const
 {
 	std::string str(std::begin(name), std::ranges::find(name, '\0'));
-	if (name.length() > E4BVariables::E4_MAX_NAME_LEN) { str.resize(E4BVariables::E4_MAX_NAME_LEN); }
+	if (name.length() > E4BVariables::EOS_E4_MAX_NAME_LEN) { str.resize(E4BVariables::EOS_E4_MAX_NAME_LEN); }
 
-	if(str.length() < E4BVariables::E4_MAX_NAME_LEN)
+	if(str.length() < E4BVariables::EOS_E4_MAX_NAME_LEN)
 	{
-		for(size_t i(str.length()); i < E4BVariables::E4_MAX_NAME_LEN; ++i)
+		for(size_t i(str.length()); i < E4BVariables::EOS_E4_MAX_NAME_LEN; ++i)
 		{
 			str.append(" ");
 		}

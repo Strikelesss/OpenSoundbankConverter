@@ -6,41 +6,41 @@
 uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 {
 	const auto& format(sample.GetFormat());
-	if ((format & E4BVariables::STEREO_SAMPLE) == E4BVariables::STEREO_SAMPLE || 
-		(format & E4BVariables::STEREO_SAMPLE_2) == E4BVariables::STEREO_SAMPLE_2) { return 2u; }
+	if ((format & E4BVariables::EOS_STEREO_SAMPLE) == E4BVariables::EOS_STEREO_SAMPLE || 
+		(format & E4BVariables::EOS_STEREO_SAMPLE_2) == E4BVariables::EOS_STEREO_SAMPLE_2) { return 2u; }
 
 	return 1u;
 }
 
 bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 {
-	std::array<char, E4BVariables::CHUNK_NAME_LEN> tempChunkName{};
-	reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
+	std::array<char, E4BVariables::EOS_CHUNK_NAME_LEN> tempChunkName{};
+	reader.readType(tempChunkName.data(), E4BVariables::EOS_CHUNK_NAME_LEN);
 
-	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_FORM_TAG.data(), E4BVariables::EMU4_FORM_TAG.length()) != 0) { return false; }
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_FORM_TAG.data(), E4BVariables::EOS_FORM_TAG.length()) != 0) { return false; }
 
-	reader.skipBytes(E4BVariables::CHUNK_NAME_LEN);
+	reader.skipBytes(E4BVariables::EOS_CHUNK_NAME_LEN);
 
-	reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
+	reader.readType(tempChunkName.data(), E4BVariables::EOS_CHUNK_NAME_LEN);
 
-	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_FORMAT_TAG.data(), E4BVariables::EMU4_E4_FORMAT_TAG.length()) != 0) { return false; }
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E4_FORMAT_TAG.data(), E4BVariables::EOS_E4_FORMAT_TAG.length()) != 0) { return false; }
 
-	reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
+	reader.readType(tempChunkName.data(), E4BVariables::EOS_CHUNK_NAME_LEN);
 
-	if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_TOC_TAG.data(), E4BVariables::EMU4_TOC_TAG.length()) != 0) { return false; }
+	if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_TOC_TAG.data(), E4BVariables::EOS_TOC_TAG.length()) != 0) { return false; }
 
 	uint32_t initialChunkLength(0u);
 	reader.readType(&initialChunkLength);
 
 	initialChunkLength = _byteswap_ulong(initialChunkLength);
 
-	const uint32_t numChunks(initialChunkLength / E4BVariables::CONTENT_CHUNK_LEN);
+	const uint32_t numChunks(initialChunkLength / E4BVariables::EOS_CHUNK_TOTAL_LEN);
 	uint32_t lastLoc(0u);
 	uint8_t currentSampleIndex(0ui8);
 
 	for(uint32_t i(0); i < numChunks; ++i)
 	{
-		reader.readType(tempChunkName.data(), E4BVariables::CHUNK_NAME_LEN);
+		reader.readType(tempChunkName.data(), E4BVariables::EOS_CHUNK_NAME_LEN);
 
 		uint32_t chunkLen(0u);
 		reader.readTypeAtLocation(&chunkLen, reader.GetCurrentReadSize());
@@ -51,18 +51,19 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		reader.readTypeAtLocation(&chunkLocation, reader.GetCurrentReadSize() + sizeof(uint32_t));
 
 		chunkLocation = _byteswap_ulong(chunkLocation);
+		const auto chunkLocationWithOffset(static_cast<size_t>(chunkLocation) + E4BVariables::EOS_CHUNK_NAME_OFFSET);
 
-		lastLoc = chunkLen + chunkLocation + E4BVariables::EMU4_E3_SAMPLE_OFFSET;
+		lastLoc = chunkLen + static_cast<uint32_t>(chunkLocationWithOffset);
 
-		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_PRESET_TAG.data(), E4BVariables::EMU4_E4_PRESET_TAG.length()) == 0)
+		if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()) == 0)
 		{
 			E4Preset preset;
-			reader.readTypeAtLocation(&preset, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, PRESET_DATA_READ_SIZE);
+			reader.readTypeAtLocation(&preset, chunkLocationWithOffset, PRESET_DATA_READ_SIZE);
 
 			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetPresetName())));
 			if (preset.GetNumVoices() > 0u)
 			{
-				auto voicePos(chunkLocation + static_cast<uint64_t>(preset.GetPresetDataSize()) + E4BVariables::CHUNK_NAME_OFFSET);
+				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetPresetDataSize()));
 
 				for (uint32_t j(1u); j <= preset.GetNumVoices(); ++j)
 				{
@@ -82,12 +83,12 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						// Account for the odd 'multisample' stuff
 						if(numVoiceEnds > 1ull)
 						{
-							if(zoneRange.first == 0)
+							if(zoneRange.first == 0x00)
 							{
 								zoneRange.first = voice.GetZoneRange().first;
 							}
 
-							if (zoneRange.second == 127)
+							if (zoneRange.second == 0x7f)
 							{
 								zoneRange.second = voice.GetZoneRange().second;
 							}
@@ -102,13 +103,19 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		}
 		else
 		{
-			if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.data(), E4BVariables::EMU4_E3_SAMPLE_TAG.length()) == 0)
+			if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()) == 0)
 			{
 				E4Sample sample;
-				reader.readTypeAtLocation(&sample, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET - 4ull, SAMPLE_DATA_READ_SIZE);
+				reader.readTypeAtLocation(&sample, chunkLocationWithOffset - 4ull, SAMPLE_DATA_READ_SIZE);
 
-				const auto wavStart(chunkLocation + E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET);
-				//const auto numSamples((chunkLength - E4BVariables::EMU4_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
+				const auto wavStart(chunkLocation + E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET);
+				//const auto numSamples((chunkLength - E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
+
+				const auto& bankData(reader.GetData());
+				std::vector<int16_t> convertedSampleData;
+				std::vector<uint8_t> sampleData(&bankData[wavStart], &bankData[lastLoc]);
+
+				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
 
 				// 0 = ???
 				// 1 = start of left channel (SAMPLE_DATA_READ_SIZE)
@@ -122,7 +129,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 
 				uint32_t loopStart(0u);
 				uint32_t loopEnd(0u);
-				const auto canLoop((sample.GetFormat() & SAMPLE_LOOP_FLAG) == SAMPLE_LOOP_FLAG);
+				const auto canLoop((sample.GetFormat() & E4SampleVariables::SAMPLE_LOOP_FLAG) == E4SampleVariables::SAMPLE_LOOP_FLAG);
 				if(canLoop)
 				{
 					const auto& params(sample.GetParams());
@@ -130,41 +137,35 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 					loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
 				}
 
-				const auto& bankData(reader.GetData());
-				std::vector<int16_t> convertedSampleData;
-				std::vector<uint8_t> sampleData(&bankData[wavStart], &bankData[lastLoc]);
-
-				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
-
 				outResult.MapSampleIndex(sample.GetIndex(), currentSampleIndex);
 				outResult.AddSample(E4SampleResult(sample.GetName(), std::move(convertedSampleData), sample.GetSampleRate(), GetSampleChannels(sample), 
-					canLoop, (sample.GetFormat() & SAMPLE_RELEASE_FLAG) == SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
+					canLoop, (sample.GetFormat() & E4SampleVariables::SAMPLE_RELEASE_FLAG) == E4SampleVariables::SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
 
 				++currentSampleIndex;
 			}
 			else
 			{
-				if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_E4_SEQ_TAG.data(), E4BVariables::EMU4_E4_SEQ_TAG.length()) == 0)
+				if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E4_SEQ_TAG.data(), E4BVariables::EOS_E4_SEQ_TAG.length()) == 0)
 				{
 					E4Sequence seq;
-					reader.readTypeAtLocation(&seq, chunkLocation + E4BVariables::CHUNK_NAME_OFFSET, SEQUENCE_DATA_READ_SIZE);
+					reader.readTypeAtLocation(&seq, chunkLocationWithOffset, SEQUENCE_DATA_READ_SIZE);
 
 					const auto& bankData(reader.GetData());
-					std::vector seqData(&bankData[chunkLocation + E4BVariables::CHUNK_NAME_OFFSET + E4BVariables::E4_MAX_NAME_LEN], &bankData[lastLoc]);
+					std::vector seqData(&bankData[chunkLocationWithOffset + E4BVariables::EOS_E4_MAX_NAME_LEN], &bankData[lastLoc]);
 
 					outResult.AddSequence(E4SequenceResult(seq.GetName(), std::move(seqData)));
 				}
 			}
 		}
 
-		reader.skipBytes(E4BVariables::CONTENT_CHUNK_LEN - 4ull);
+		reader.skipBytes(E4BVariables::EOS_CHUNK_TOTAL_LEN - 4ull);
 	}
 
 	const auto& bankData(reader.GetData());
 	if (lastLoc <= bankData.size())
 	{
-		reader.readTypeAtLocation(tempChunkName.data(), lastLoc, E4BVariables::CHUNK_NAME_LEN);
-		if (std::strncmp(tempChunkName.data(), E4BVariables::EMU4_EMSt_TAG.data(), E4BVariables::EMU4_EMSt_TAG.length()) != 0) { return false; }
+		reader.readTypeAtLocation(tempChunkName.data(), lastLoc, E4BVariables::EOS_CHUNK_NAME_LEN);
+		if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) != 0) { return false; }
 
 		E4EMSt emst;
 		reader.readTypeAtLocation(&emst, lastLoc + 4ull, EMST_DATA_READ_SIZE);

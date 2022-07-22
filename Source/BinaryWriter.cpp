@@ -16,9 +16,6 @@ bool BinaryWriter::finishWriting()
 			of.write(m_writeDataVector.data(), static_cast<std::streamsize>(m_writeDataVector.size()));
 		}
 
-		//m_writeDataVector.clear();
-		//m_writeData = nullptr;
-		//m_bytesWritten = 0;
 		return true;
 	}
 

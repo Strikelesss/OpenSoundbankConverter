@@ -1,13 +1,9 @@
 #pragma once
 #include "E4BVariables.h"
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 struct BinaryWriter;
-
-constexpr auto CURVE_TIME_A = 0.00177687;
-constexpr auto CURVE_TIME_B = 1.09405;
 
 /*
  * Data
@@ -26,7 +22,6 @@ struct E4VoiceEndData final
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] uint8_t GetOriginalKey() const { return m_originalKey; }
-
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
 private:
@@ -47,6 +42,9 @@ constexpr auto VOICE_END_DATA_READ_SIZE = 13ull;
 
 struct E4Envelope final
 {
+	E4Envelope() = default;
+	explicit E4Envelope(double attack, double release);
+
 	[[nodiscard]] double GetAttack1Sec() const;
 	[[nodiscard]] float GetAttack1Level() const;
 	[[nodiscard]] double GetAttack2Sec() const;
@@ -59,11 +57,8 @@ struct E4Envelope final
 	[[nodiscard]] float GetRelease1Level() const;
 	[[nodiscard]] double GetRelease2Sec() const;
 	[[nodiscard]] float GetRelease2Level() const;
-
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
-	E4Envelope() = default;
-	explicit E4Envelope(double attack, double release);
 private:
 	uint8_t m_attack1Sec = 0ui8;
 	int8_t m_attack1Level = 127ui8;
@@ -109,6 +104,11 @@ private:
 
 struct E4Voice final
 {
+	E4Voice() = default;
+
+	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t pan, int8_t volume, double fineTune, double keyDelay,
+		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord);
+
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
 		return std::make_pair(m_lowZone, m_highZone);
@@ -118,20 +118,6 @@ struct E4Voice final
 	{
 		return std::make_pair(m_minVelocity, m_maxVelocity);
 	}
-
-	// release values:
-	// 0 = 0
-	// 12 = 0.108
-	// 32 = 0.411
-	// 59 = 1.976
-	// 84 = 8.045
-	// 97 = 16.872
-	// 111 = 40.119
-	// 120 = 79.558
-	// 127 = 163.60
-
-	// todo: right source side for voice processing
-	// todo: attack/release/etc times
 
 	[[nodiscard]] uint16_t GetVoiceDataSize() const { return _byteswap_ushort(m_totalVoiceSize); }
 	[[nodiscard]] float GetChorusWidth() const;
@@ -146,13 +132,18 @@ struct E4Voice final
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
 	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
-
-	E4Voice() = default;
-
-	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t pan, int8_t volume, double fineTune, double keyDelay,
-		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord);
-
 	[[nodiscard]] bool write(BinaryWriter& writer);
+
+	// release values:
+	// 0 = 0
+	// 12 = 0.108
+	// 32 = 0.411
+	// 59 = 1.976
+	// 84 = 8.045
+	// 97 = 16.872
+	// 111 = 40.119
+	// 120 = 79.558
+	// 127 = 163.60
 
 private:
 	uint16_t m_totalVoiceSize = 0i16; // requires byteswap
@@ -229,7 +220,7 @@ struct E4Preset final
 	[[nodiscard]] uint16_t GetPresetDataSize() const { return _byteswap_ushort(m_presetDataSize); }
 
 private:
-	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{};
+	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
 	uint16_t m_presetDataSize = 0ui16;
 	uint16_t m_numVoices = 0ui16;
 
@@ -244,7 +235,7 @@ struct E4Sequence final
 	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
 
 private:
-	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{};
+	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
 };
 
 constexpr auto SEQUENCE_DATA_READ_SIZE = 16ull;
@@ -257,7 +248,7 @@ struct E4EMSt final
 private:
 	uint32_t m_dataSize = 0u;
 	std::array<int8_t, 2> m_possibleRedundant1{};
-	std::array<char, E4BVariables::E4_MAX_NAME_LEN> m_name{'U', 'n', 't', 'i', 't', 'l', 'e', 'd', ' ', 'M', 'S', 'e', 't', 'u', 'p', ' '};
+	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{'U', 'n', 't', 'i', 't', 'l', 'e', 'd', ' ', 'M', 'S', 'e', 't', 'u', 'p', ' '};
 	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\2'};
 	uint8_t m_currentPreset = 0ui8;
 	std::array<uint8_t, 28> m_possibleRedundant3{static_cast<uint8_t>(127), '\0', '\0', '\0', '\0', static_cast<uint8_t>(255),
@@ -340,10 +331,10 @@ private:
 struct E4PresetResult final
 {
 	explicit E4PresetResult(std::string&& name) : m_name(std::move(name)) {}
-	[[nodiscard]] const std::vector<E4VoiceResult>& GetVoices() const { return m_voices; }
-	[[nodiscard]] const std::string& GetName() const { return m_name; }
 
 	void AddVoice(E4VoiceResult&& voice) { m_voices.emplace_back(std::move(voice)); }
+	[[nodiscard]] const std::vector<E4VoiceResult>& GetVoices() const { return m_voices; }
+	[[nodiscard]] const std::string& GetName() const { return m_name; }
 
 private:
 	std::string m_name;
@@ -365,11 +356,6 @@ struct E4Result final
 {
 	E4Result() = default;
 	explicit E4Result(std::vector<E4PresetResult>&& presets) : m_presets(std::move(presets)) {}
-	[[nodiscard]] const std::vector<E4PresetResult>& GetPresets() const { return m_presets; }
-	[[nodiscard]] const std::vector<E4SampleResult>& GetSamples() const { return m_samples; }
-	[[nodiscard]] const std::vector<E4SequenceResult>& GetSequences() const { return m_sequences; }
-	[[nodiscard]] const std::unordered_map<uint16_t, uint8_t>& GetSampleIndexMapping() const { return m_sampleIndexMapping; }
-	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
 
 	void Clear() { m_presets.clear(); m_samples.clear(); m_sequences.clear(); }
 	void SetCurrentPreset(const uint8_t preset) { m_currentPreset = preset; }
@@ -377,6 +363,12 @@ struct E4Result final
 	void MapSampleIndex(const uint16_t sampleIndex, const uint8_t sampleIndex2) { m_sampleIndexMapping[sampleIndex] = sampleIndex2; }
 	void AddSample(E4SampleResult&& sample) { m_samples.emplace_back(std::move(sample)); }
 	void AddSequence(E4SequenceResult&& seq) { m_sequences.emplace_back(std::move(seq)); }
+
+	[[nodiscard]] const std::vector<E4PresetResult>& GetPresets() const { return m_presets; }
+	[[nodiscard]] const std::vector<E4SampleResult>& GetSamples() const { return m_samples; }
+	[[nodiscard]] const std::vector<E4SequenceResult>& GetSequences() const { return m_sequences; }
+	[[nodiscard]] const std::unordered_map<uint16_t, uint8_t>& GetSampleIndexMapping() const { return m_sampleIndexMapping; }
+	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
 
 private:
 	uint8_t m_currentPreset = 255ui8;

@@ -22,13 +22,6 @@ struct BinaryWriter final
 			m_writeData += m_bytesWritten;
 		}
 
-		/*
-		if constexpr(std::is_same_v<const char*, decltype(data)>)
-		{
-			if (static_cast<const char*>(data)[0] == '\0') { return false; }
-		}
-		*/
-
 		const auto size(customSize == 0 ? sizeof(T) : customSize);
 		std::memcpy(m_writeData, data, size);
 		m_writeData += size;
