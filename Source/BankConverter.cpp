@@ -26,7 +26,7 @@ int16_t SF2Converter::FilterFrequencyToCents(const uint16_t freq)
 
 int16_t SF2Converter::secToTimecent(const double sec)
 {
-	return static_cast<int16_t>(std::lround(std::log(sec) / std::log(2.) * 1200.));
+	return static_cast<int16_t>(std::lround(std::log(sec) / std::log(2) * 1200.));
 }
 
 bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options) const
@@ -36,10 +36,8 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 	const auto convertedName(ConvertNameToSFName(bankName));
 
 	sf2cute::SoundFont sf2;
-	
-	sf2.set_sound_engine("EMU8000");
 	sf2.set_bank_name(convertedName);
-	sf2.set_rom_name("ROM");
+	sf2.set_sound_engine("EMU8000");
 
 	for(const auto& e4Sample : e4b.GetSamples())
 	{
@@ -49,7 +47,6 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 	uint32_t presetIndex(0u);
 	for(const auto& preset : e4b.GetPresets())
 	{
-		uint32_t voiceIndex(0u);
 		std::vector<sf2cute::SFPresetZone> presetZones;
 		std::vector<sf2cute::SFInstrumentZone> instrumentZones;
 		for(const auto& voice : preset.GetVoices())
@@ -65,35 +62,44 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto& velRange(voice.GetVelocityRange());
 
 			sf2cute::SFInstrumentZone instrumentZone(sf2.samples()[sampleIndex], std::vector{
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kOverridingRootKey, voice.GetOriginalKey()),
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, std::clamp(static_cast<int16_t>(std::abs(voice.GetVolume()) * 10i16), 0i16, 144i16)), // Using abs on volume since SF2 does not support negative attenuation
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.first, zoneRange.second)),
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second)),
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSampleModes, static_cast<int16_t>(sampleMode))
+				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second))
 			}, std::vector<sf2cute::SFModulatorItem>{});
+
+			const auto originalKey(voice.GetOriginalKey());
+			if(originalKey != 53ui8)
+			{
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kOverridingRootKey, originalKey));
+			}
+
+			if(sampleMode != 0ui16)
+			{
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSampleModes, static_cast<int16_t>(sampleMode)));
+			}
 
 			// Envelope
 
 			const auto ampAttackSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetAttack1Sec()));
-			if (ampAttackSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
+			if (ampAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
 
 			const auto ampDecayLevel(voice.GetAmpEnv().GetDecay1Level());
 			const auto ampDecaySec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay1Sec()));
-			if (ampDecayLevel < 100.f && ampDecaySec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
+			if (ampDecayLevel < 100.f && ampDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
 
 			//const auto ampSustainLevel(voice.GetAmpEnv().GetDecay2Level());
 			//const auto ampSustainSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay2Sec()));
 			//if(ampSustainLevel < 100.f && ampSustainSec > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, ampSustainSec)); }
 
 			const auto ampReleaseSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetRelease1Sec()));
-			if (ampReleaseSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseVolEnv, ampReleaseSec)); }
+			if (ampReleaseSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseVolEnv, ampReleaseSec)); }
 
 			const auto filterAttackSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetAttack1Sec()));
-			if (filterAttackSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttackSec)); }
+			if (filterAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttackSec)); }
 
 			const auto filterDecayLevel(voice.GetFilterEnv().GetDecay1Level());
 			const auto filterDecaySec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay1Sec()));
-			if (filterDecayLevel < 100.f && filterDecaySec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
+			if (filterDecayLevel < 100.f && filterDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
 
 			//const auto filterSustainLevel(voice.GetFilterEnv().GetDecay2Level());
 			//const auto filterSustainSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay2Sec()));
@@ -110,6 +116,32 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto filterQ(voice.GetFilterQ());
 			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
 
+			for(const auto& cord : voice.GetCords())
+			{
+				if(cord.GetSource() == 80ui8)
+				{
+					/*
+					constexpr auto m1(VoiceDefinitions::ConvertPercentToByteF(63.6f));
+					const auto m2(std::ceilf(VoiceDefinitions::ConvertByteToPercentF(m1)));
+
+					const auto test1(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()));
+					const auto test(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()) * 3000.f / 100.f);
+					const auto modEnvFilter(SF2Converter::FilterFrequencyToCents(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()) * 3000.f / 100.f));
+
+					// TODO: convert hz to cents
+					*/
+
+					// TODO: mod env to filter fc stuff
+					const auto amount(cord.GetAmount());
+					if(amount != 0ui8)
+					{
+						instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModEnvToFilterFc, -2448i16));
+					}
+
+					break;
+				}
+			}
+
 			// Amplifier / Oscillator
 
 			const auto pan(options.m_flipPan ? -voice.GetPan() : voice.GetPan());
@@ -122,11 +154,11 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if (chorusSend > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kChorusEffectsSend, static_cast<int16_t>(chorusSend * 10.f))); }
 
 			instrumentZones.emplace_back(instrumentZone);
-			++voiceIndex;
 		}
 
-		presetZones.emplace_back(sf2.NewInstrument(preset.GetName(), instrumentZones));
-		const std::shared_ptr sfPreset(sf2.NewPreset(preset.GetName(), presetIndex, 0, presetZones));
+		const auto& presetName(preset.GetName());
+		presetZones.emplace_back(sf2.NewInstrument(presetName, instrumentZones));
+		const std::shared_ptr sfPreset(sf2.NewPreset(presetName, presetIndex, 0, presetZones));
 		++presetIndex;
 	}
 
@@ -336,9 +368,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																		{
 																			const auto region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -region.pan : region.pan * 100.f));
+																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -region.pan * 100.f : region.pan * 100.f));
 																			const auto volume(static_cast<int8_t>(region.attenuation));
 																			const auto fineTune(static_cast<double>(region.tune));
+																			const auto coarseTune(static_cast<int8_t>(region.transpose));
 																			const auto filterQ(static_cast<float>(region.initialFilterQ) / 10.f);
 
 																			const auto filterEnvPos(region.modEnvToFilterFc);
@@ -366,7 +399,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto filterAttack(static_cast<double>(filterEnv.attack));
 																			const auto filterRelease(static_cast<double>(filterEnv.release));
 
-																			E4Voice voice(0.f, 0.f, filterFreq, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
+																			E4Voice voice(0.f, 0.f, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
 																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampRelease), E4Envelope(filterAttack, filterRelease), 
 																				E4Cord(80ui8, 56ui8, VoiceDefinitions::ConvertPercentToByteF(filterEnvPosPercent)));
 

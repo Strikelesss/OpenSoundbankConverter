@@ -14,8 +14,10 @@ namespace VoiceDefinitions
 	[[nodiscard]] int8_t ConvertFineTuneToByte(double fineTune);
 	[[nodiscard]] double ConvertByteToFineTune(int8_t b);
 	[[nodiscard]] float ConvertByteToFilterQ(uint8_t b);
-	[[nodiscard]] double GetTimeFromCurve(uint8_t b);
-	[[nodiscard]] uint8_t GetByteFromSec(double sec);
+	[[nodiscard]] double GetTimeFromCurveAttack(uint8_t b);
+	[[nodiscard]] double GetTimeFromCurveRelease(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromSecAttack(double sec);
+	[[nodiscard]] uint8_t GetByteFromSecRelease(double sec);
 
 	[[nodiscard]] constexpr float GetBottomSectionPercent(const uint8_t value)
 	{
@@ -24,12 +26,17 @@ namespace VoiceDefinitions
 
 	[[nodiscard]] constexpr int8_t ConvertPercentToByteF(const float value, const bool inverted = false)
 	{
-		if(inverted) { return static_cast<int8_t>((value * 127.f / 100.f) - 128.f); }
+		if(inverted) { return static_cast<int8_t>(value * 127.f / 100.f - 128.f); }
 		return static_cast<int8_t>(value * 127.f / 100.f);
 	}
 
 	[[nodiscard]] constexpr int8_t ConvertPercentToByteD(const double value)
 	{
 		return static_cast<int8_t>(value * 127. / 100.);
+	}
+
+	[[nodiscard]] constexpr float ConvertByteToPercentF(const int8_t b)
+	{
+		return static_cast<float>(b) / 127.f * 100.f;
 	}
 }

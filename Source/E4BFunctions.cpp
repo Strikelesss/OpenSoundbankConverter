@@ -94,7 +94,8 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 							}
 						}
 
-						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex()));
+						std::array cords(voice.GetCords());
+						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), std::move(cords)));
 					}
 
 					voicePos += static_cast<uint64_t>(voiceSize);

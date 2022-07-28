@@ -844,8 +844,7 @@ static int tsf_load_presets(tsf* res, struct tsf_hydra *hydra, unsigned int font
 								if (pshdr->endLoop > 0) zoneRegion.loop_end -= 1;
 								if (zoneRegion.pitch_keycenter == -1) zoneRegion.pitch_keycenter = pshdr->originalPitch;
 
-								// Custom
-								//zoneRegion.tune += pshdr->pitchCorrection;
+								zoneRegion.tune += pshdr->pitchCorrection;
 
 								zoneRegion.sample_rate = pshdr->sampleRate;
 								if (zoneRegion.end && zoneRegion.end < fontSampleCount) zoneRegion.end++;

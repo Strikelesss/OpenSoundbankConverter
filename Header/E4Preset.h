@@ -92,13 +92,14 @@ private:
 struct E4Cord final
 {
 	E4Cord() = default;
-	explicit E4Cord(const uint8_t source, const uint8_t dest, const uint8_t amount) : m_source(source), m_dest(dest), m_amount(amount) {}
+	explicit E4Cord(const uint8_t source, const uint8_t dest, const int8_t amount) : m_source(source), m_dest(dest), m_amount(amount) {}
 
 	[[nodiscard]] uint8_t GetSource() const { return m_source; }
+	[[nodiscard]] int8_t GetAmount() const { return m_amount; }
 private:
 	uint8_t m_source = 0ui8;
 	uint8_t m_dest = 0ui8;
-	uint8_t m_amount = 0ui8;
+	int8_t m_amount = 0ui8;
 	uint8_t m_possibleRedundant1 = 0ui8;
 };
 
@@ -106,7 +107,7 @@ struct E4Voice final
 {
 	E4Voice() = default;
 
-	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t pan, int8_t volume, double fineTune, double keyDelay,
+	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t coarseTune, int8_t pan, int8_t volume, double fineTune, double keyDelay,
 		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord);
 
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
@@ -132,6 +133,7 @@ struct E4Voice final
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
 	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
+	[[nodiscard]] const std::array<E4Cord, 24>& GetCords() const { return m_cords; }
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
 	// release values:
@@ -264,9 +266,9 @@ constexpr auto EMST_DATA_READ_SIZE = 28ull;
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const E4Voice& voice, std::pair<uint8_t, uint8_t>&& zoneRange, const uint8_t originalKey, const uint8_t sampleIndex) : m_zone(std::move(zoneRange)), m_velocity(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()),
-		m_fineTune(voice.GetFineTune()), m_filterQ(voice.GetFilterQ()), m_volume(voice.GetVolume()), m_pan(voice.GetPan()), m_filterFrequency(voice.GetFilterFrequency()), m_chorusAmount(voice.GetChorusAmount()),
-		m_chorusWidth(voice.GetChorusWidth()), m_originalKey(originalKey), m_sampleIndex(sampleIndex), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()) {}
+	explicit E4VoiceResult(const E4Voice& voice, std::pair<uint8_t, uint8_t>&& zoneRange, const uint8_t originalKey, const uint8_t sampleIndex, std::array<E4Cord, 24>&& cords) : m_zone(std::move(zoneRange)), m_velocity(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()), m_fineTune(voice.GetFineTune()),
+		m_filterQ(voice.GetFilterQ()), m_volume(voice.GetVolume()), m_pan(voice.GetPan()), m_filterFrequency(voice.GetFilterFrequency()), m_chorusAmount(voice.GetChorusAmount()), m_chorusWidth(voice.GetChorusWidth()),
+		m_originalKey(originalKey), m_sampleIndex(sampleIndex), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()), m_cords(std::move(cords)) {}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetZoneRange() const { return m_zone; }
@@ -283,6 +285,7 @@ struct E4VoiceResult final
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }
 	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
+	[[nodiscard]] const std::array<E4Cord, 24>& GetCords() const { return m_cords; }
 
 private:
 	std::pair<uint8_t, uint8_t> m_zone{0ui8, 0ui8};
@@ -301,6 +304,8 @@ private:
 	E4Envelope m_ampEnv{};
 	E4Envelope m_filterEnv{};
 	E4Envelope m_auxEnv{};
+
+	std::array<E4Cord, 24> m_cords{};
 };
 
 struct E4SampleResult final
