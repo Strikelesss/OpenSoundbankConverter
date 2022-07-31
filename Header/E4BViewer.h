@@ -51,6 +51,6 @@ namespace E4BViewer
 	inline std::vector<std::string> m_filterExtensions{".E4B", ".SF2"};
 	inline std::filesystem::path m_openedBank;
 	inline std::filesystem::path m_currentSearchPath;
-	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false;
+	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false, m_isChickenTranslatorFile = false;
 	inline EBankType m_currentBankType;
 }

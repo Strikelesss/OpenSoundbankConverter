@@ -368,7 +368,17 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																		{
 																			const auto region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -region.pan * 100.f : region.pan * 100.f));
+
+																			const auto convertedPan(static_cast<int8_t>(std::round(region.pan * 100.f)));
+																			auto pan(options.m_flipPan ? -convertedPan : convertedPan);
+
+																			// Chicken Translator clamps -50 to 50, while EOS uses -64 to 63
+																			if(options.m_isChickenTranslatorFile)
+																			{
+																				if(pan > 0i8) { pan += 13i8; }
+																				else if(pan < 0i8) { pan -= 14i8; }
+																			}
+
 																			const auto volume(static_cast<int8_t>(region.attenuation));
 																			const auto fineTune(static_cast<double>(region.tune));
 																			const auto coarseTune(static_cast<int8_t>(region.transpose));
@@ -488,8 +498,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																uint32_t format(MONO_SAMPLE | E4SampleVariables::SAMPLE_RELEASE_FLAG);
 
 																const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
-																if(mode == 1 || mode == 3) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
-
+																if(mode == TSF_LOOPMODE_CONTINUOUS || mode == TSF_LOOPMODE_SUSTAIN) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
+																
 																if (writer.writeType(&format))
 																{
 																	// Generally always empty, can keep as constexpr

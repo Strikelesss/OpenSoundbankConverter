@@ -6,6 +6,7 @@ struct E4Result;
 struct ConverterOptions final
 {
 	bool m_flipPan = false;
+	bool m_isChickenTranslatorFile = false;
 };
 
 namespace SF2Converter

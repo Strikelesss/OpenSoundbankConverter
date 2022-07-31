@@ -205,7 +205,7 @@ void E4BViewer::Render()
 					if(ImGui::Button("Convert To E4B"))
 					{
 						constexpr BankConverter converter;
-						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan)))
+						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
 						{
 							OutputDebugStringA("Successfully converted to E4B! \n");
 						}
@@ -216,7 +216,7 @@ void E4BViewer::Render()
 					if(ImGui::Button("Convert To SF2"))
 					{
 						constexpr BankConverter converter;
-						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan)))
+						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
 						{
 							OutputDebugStringA("Successfully converted to SF2! \n");
 						}
@@ -225,6 +225,9 @@ void E4BViewer::Render()
 
 				ImGui::SameLine();
 				ImGui::Checkbox("Flip Pan", &m_flipPan);
+
+				ImGui::SameLine();
+				ImGui::Checkbox("Is Chicken Translator Bank", &m_isChickenTranslatorFile);
 
                 ImGui::EndPopup();
 			}
