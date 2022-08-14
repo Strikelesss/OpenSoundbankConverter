@@ -515,7 +515,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 											uint32_t presetChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 											if (writer.writeType(&presetChunkLen))
 											{
-												const auto presetNum(static_cast<uint16_t>(i));
+												const auto presetNum(_byteswap_ushort(static_cast<uint16_t>(i)));
 												if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
 												{
 													const auto presetDataSize(_byteswap_ushort(static_cast<uint16_t>(TOTAL_PRESET_DATA_SIZE)));
