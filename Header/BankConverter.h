@@ -6,10 +6,11 @@ struct E4Result;
 struct ConverterOptions final
 {
 	ConverterOptions() = default;
-	explicit ConverterOptions(const bool flipPan, const bool isChickenTranslatorFile, const bool ignoreFileNameSetting = false)
-		: m_flipPan(flipPan), m_isChickenTranslatorFile(isChickenTranslatorFile), m_ignoreFileNameSetting(ignoreFileNameSetting) {}
+	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool isChickenTranslatorFile, const bool ignoreFileNameSetting = false)
+		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_isChickenTranslatorFile(isChickenTranslatorFile), m_ignoreFileNameSetting(ignoreFileNameSetting) {}
 
 	bool m_flipPan = false;
+	bool m_useConverterSpecificData = true;
 	bool m_isChickenTranslatorFile = false;
 	bool m_ignoreFileNameSetting = false;
 	std::filesystem::path m_ignoreFileNameSettingSaveFolder;
@@ -24,8 +25,8 @@ namespace SF2Converter
 	// kUnused1 = LFO1 ~ -> Amp Pan
 	// kUnused2 = Positive or negative attenuation
 	// kUnused3 = LFO1 shape
-	// kUnused4 = Filter Env Attack
-	// kUnused5 = LFO1 ~ Key Sync
+	// kUnused4 = LFO1 Key Sync
+	// kUnused5 = Chorus Width
 
 	constexpr auto SF2_MAX_NAME_LEN = 20u;
 	constexpr auto BASE_CENT_VALUE = 6900i16;

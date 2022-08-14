@@ -87,35 +87,49 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// Envelope
 
+			/*
+			 * Amp Env
+			 */
+
+			const auto& ampEnv(voice.GetAmpEnv());
 			const auto ampDelaySec(SF2Converter::secToTimecent(voice.GetKeyDelay()));
 			if (ampDelaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayVolEnv, ampDelaySec)); }
 
-			const auto ampAttackSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetAttack1Sec()));
+			const auto ampAttackSec(SF2Converter::secToTimecent(ampEnv.GetAttack2Sec()));
 			if (ampAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
 
-			const auto ampDecayLevel(voice.GetAmpEnv().GetDecay1Level());
-			const auto ampDecaySec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay1Sec()));
-			if (ampDecayLevel < 100.f && ampDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
+			const auto ampHoldSec(SF2Converter::secToTimecent(ampEnv.GetAttack1Sec()));
+			if (ampHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldVolEnv, ampHoldSec)); }
 
-			//const auto ampSustainLevel(voice.GetAmpEnv().GetDecay2Level());
-			//const auto ampSustainSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetDecay2Sec()));
-			//if(ampSustainLevel < 100.f && ampSustainSec > 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, ampSustainSec)); }
+			// Sustain Level is expressed in dB for vol env, and is also opposite because of SF2
+			const auto ampSustainLevel(ampEnv.GetDecay2Level());
+			if(ampSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, static_cast<int16_t>((-(ampSustainLevel / 100.f * 144.f) + 144.f) * 10.f))); }
 
-			const auto ampReleaseSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetRelease1Sec()));
+			const auto ampDecaySec(SF2Converter::secToTimecent(ampEnv.GetDecay2Sec()));
+			if(ampSustainLevel < 100.f && ampDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
+
+			const auto ampReleaseSec(SF2Converter::secToTimecent(ampEnv.GetRelease1Sec()));
 			if (ampReleaseSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseVolEnv, ampReleaseSec)); }
 
-			const auto filterAttackSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetAttack1Sec()));
+			/*
+			 * Filter Env
+			 */
+
+			const auto& filterEnv(voice.GetFilterEnv());
+			const auto filterAttackSec(SF2Converter::secToTimecent(filterEnv.GetAttack2Sec()));
 			if (filterAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttackSec)); }
 
-			const auto filterDecayLevel(voice.GetFilterEnv().GetDecay1Level());
-			const auto filterDecaySec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay1Sec()));
-			if (filterDecayLevel < 100.f && filterDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
+			const auto filterHoldSec(SF2Converter::secToTimecent(filterEnv.GetAttack1Sec()));
+			if (filterHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldModEnv, filterHoldSec)); }
 
-			//const auto filterSustainLevel(voice.GetFilterEnv().GetDecay2Level());
-			//const auto filterSustainSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetDecay2Sec()));
-			//if(filterSustainLevel < 100.f && filterSustainSec > 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, filterSustainSec)); }
+			// Opposite because of SF2
+			const auto filterSustainLevel(filterEnv.GetDecay2Level());
+			if(filterSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, static_cast<int16_t>((-filterSustainLevel + 100.f) * 10.f))); }
 
-			const auto filterReleaseSec(SF2Converter::secToTimecent(voice.GetFilterEnv().GetRelease1Sec()));
+			const auto filterDecaySec(SF2Converter::secToTimecent(filterEnv.GetDecay2Sec()));
+			if(filterSustainLevel < 100.f && filterDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
+
+			const auto filterReleaseSec(SF2Converter::secToTimecent(filterEnv.GetRelease1Sec()));
 			if (filterReleaseSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kReleaseModEnv, filterReleaseSec)); }
 
 			// Filters
@@ -130,18 +144,21 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// TODO: correct all these LFO values
 
-			//constexpr auto test((127 + 96) * 0.08);
-			const auto lfoFreq(voice.GetLFO1().GetRate());
-			if (lfoFreq != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFreqModLFO, lfoFreq)); }
+			//constexpr auto test((127 + (127-29)) * 0.08);
+			const auto lfo1Freq(voice.GetLFO1().GetRate());
+			if (lfo1Freq != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFreqModLFO, lfo1Freq)); }
 
-			const auto lfoDelay(voice.GetLFO1().GetDelay());
-			if (lfoDelay != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModLFO, lfoDelay)); }
+			const auto lfo1Delay(voice.GetLFO1().GetDelay());
+			if (lfo1Delay != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModLFO, lfo1Delay)); }
 
-			const auto lfoShape(voice.GetLFO1().GetShape());
-			if (lfoShape != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused3, lfoShape)); }
+			if(options.m_useConverterSpecificData)
+			{
+				const auto lfo1Shape(voice.GetLFO1().GetShape());
+				if (lfo1Shape != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused3, lfo1Shape)); }
 
-			const auto lfo1KeySync(voice.GetLFO1().IsKeySync());
-			instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, lfo1KeySync));
+				const auto lfo1KeySync(voice.GetLFO1().IsKeySync());
+				if(lfo1KeySync) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused4, true)); }
+			}
 
 			// Cords
 			// Unipolar = +
@@ -151,8 +168,8 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, AMP_VOLUME, cordAmtPercent1))
 			{
 				// LFO 1 ~ -> Amp Volume
-				const auto db(cordAmtPercent1 * voiceVolume / 100.f);
-				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToVolume, static_cast<int16_t>(db)));
+				const auto cB(VoiceDefinitions::convert_dB_to_cB(cordAmtPercent1 * static_cast<float>(voiceVolBefore) / 100.f));
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToVolume, cB));
 			}
 
 			float cordAmtPercent2(0.f);
@@ -169,11 +186,14 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToFilterFc, static_cast<int16_t>(cordAmtPercent3)));
 			}
 
-			float cordAmtPercent4(0.f);
-			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, AMP_PAN, cordAmtPercent4))
+			if (options.m_useConverterSpecificData)
 			{
-				// LFO 1 ~ -> Amp Pan
-				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused1, static_cast<int16_t>(cordAmtPercent4)));
+				float cordAmtPercent4(0.f);
+				if (voice.GetAmountFromCord(LFO1_POLARITY_CENTER, AMP_PAN, cordAmtPercent4))
+				{
+					// LFO 1 ~ -> Amp Pan
+					instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused1, static_cast<int16_t>(cordAmtPercent4)));
+				}
 			}
 
 			float cordAmtPercent5(0.f);
@@ -190,7 +210,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			{
 				// Pitch Wheel -> Pitch
 				const auto pitchWheel(sf2cute::SFModulator(sf2cute::SFGeneralController::kPitchWheel, sf2cute::SFControllerDirection::kIncrease, 
-					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+					sf2cute::SFControllerPolarity::kBipolar, sf2cute::SFControllerType::kLinear));
 
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(pitchWheel, sf2cute::SFGenerator(), static_cast<int16_t>(cordAmtPercent6), 
 					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));	
@@ -233,7 +253,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, cordAmtPercent10))
 			{
 				// Velocity < -> Filter Env Attack
-				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kUnused4, static_cast<int16_t>(cordAmtPercent10),
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kAttackModEnv, static_cast<int16_t>(cordAmtPercent10),
 					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
 			}
 
@@ -242,6 +262,28 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			{
 				// Velocity < -> Filter Freq
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(cordAmtPercent11),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent12(0.f);
+			if (voice.GetAmountFromCord(VELOCITY_POLARITY_CENTER, AMP_PAN, cordAmtPercent12))
+			{
+				// Velocity ~ -> Filter Freq
+				const auto velCenter(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnVelocity, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kBipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velCenter, sf2cute::SFGenerator::kPan, static_cast<int16_t>(cordAmtPercent12),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent13(0.f);
+			if (voice.GetAmountFromCord(KEY_POLARITY_CENTER, FILTER_FREQ, cordAmtPercent13))
+			{
+				// Key ~ -> Filter Freq
+				const auto keyCenter(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnKeyNumber, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kBipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(keyCenter, sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(cordAmtPercent13),
 					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
 			}
 
@@ -261,8 +303,14 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// Other
 
-			const auto attenuationSign(voiceVolBefore > 0 ? 1 : voiceVolBefore < 0 ? -1 : 0);
-			instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused2, static_cast<int16_t>(attenuationSign)));
+			if(options.m_useConverterSpecificData)
+			{
+				const auto chorusWidth(voice.GetChorusWidth());
+				if (chorusWidth > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, static_cast<int16_t>(chorusWidth))); }
+
+				const auto attenuationSign(voiceVolBefore > 0 ? 1 : voiceVolBefore < 0 ? -1 : 0);
+				if(attenuationSign != 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused2, static_cast<int16_t>(attenuationSign))); }
+			}
 
 			instrumentZones.emplace_back(instrumentZone);
 		}
@@ -490,7 +538,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																	{
 																		for (uint16_t j(0ui16); j < numVoices; ++j)
 																		{
-																			const auto region(preset.regions[j]);
+																			const auto& region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
 																			auto convertedPan(region.pan / 10.f);
 
@@ -505,10 +553,15 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -convertedPan : convertedPan));
 
-																			auto volume(static_cast<int8_t>(region.attenuation));
+																			int8_t volume(0i8);
 
-																			// Multiply by the sign since SF2 does not support negative attenuation
-																			if(region.unused2 != 0) { volume *= static_cast<int8_t>(region.unused2); }
+																			if(options.m_useConverterSpecificData)
+																			{
+																				// Multiply by the sign since SF2 does not support negative attenuation
+																				const auto attenuationSign(region.unused2);
+																				volume = static_cast<int8_t>(attenuationSign != 0 ? region.attenuation * 
+																					static_cast<float>(attenuationSign) : region.attenuation);
+																			}
 
 																			const auto fineTune(static_cast<double>(region.tune));
 																			const auto coarseTune(static_cast<int8_t>(region.transpose));
@@ -519,21 +572,41 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto filterEnvPosPercent(std::roundf(filterEnvPos * 100.f / FILTER_FREQUENCY_MAX_HZ));
 
 																			const auto lfo1delay(static_cast<double>(region.delayModLFO));
-																			const auto ampEnv(region.ampenv);
+																			const auto& ampEnv(region.ampenv);
 
 																			// Round up 3 decimal places
 																			const auto keyDelay(std::ceil(static_cast<double>(ampEnv.delay) * 1000.) / 1000.);
 
 																			const auto ampAttack(static_cast<double>(ampEnv.attack));
 																			const auto ampRelease(static_cast<double>(ampEnv.release));
+																			const auto ampDecay(static_cast<double>(ampEnv.decay));
+																			const auto ampHold(static_cast<double>(ampEnv.hold));
+																			const auto ampSustain(ampEnv.sustain * 100.f);
 
-																			const auto filterEnv(region.modenv);
+																			const auto& filterEnv(region.modenv);
 																			const auto filterAttack(static_cast<double>(filterEnv.attack));
 																			const auto filterRelease(static_cast<double>(filterEnv.release));
+																			const auto filterDecay(static_cast<double>(filterEnv.decay));
+																			const auto filterHold(static_cast<double>(filterEnv.hold));
+																			const auto filterSustain(filterEnv.sustain * 100.f);
 
-																			E4Voice voice(0.f, 0.f, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
-																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampRelease), E4Envelope(filterAttack, filterRelease),
-																				E4LFO(static_cast<uint8_t>(region.freqModLFO), static_cast<uint8_t>(region.unused3), lfo1delay, region.unused5));
+																			float chorusAmount(region.chorusEffectsSend / 10.f);
+																			auto chorusWidth(static_cast<float>(region.unused5));
+
+																			E4LFO lfo1;
+																			if(options.m_useConverterSpecificData)
+																			{
+																				lfo1 = E4LFO(static_cast<uint8_t>(region.freqModLFO), static_cast<uint8_t>(region.unused3), lfo1delay, region.unused4);
+																				chorusWidth = static_cast<float>(region.unused5);
+																			}
+																			else
+																			{
+																				lfo1 = E4LFO(static_cast<uint8_t>(region.freqModLFO), 0ui8, 0., false);
+																			}
+
+																			E4Voice voice(chorusWidth, chorusAmount, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
+																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampDecay, ampHold, ampRelease, ampSustain), 
+																				E4Envelope(filterAttack, filterDecay, filterHold, filterRelease, filterSustain), lfo1);
 
 																			/*
 																			 * Cords
@@ -543,13 +616,20 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			voice.ReplaceOrAddCord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(filterEnvPosPercent));
 
 																			const auto modLfoToVolume(static_cast<int8_t>(region.modLfoToVolume));
-																			if(modLfoToVolume != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_VOLUME, modLfoToVolume); }
+																			if(modLfoToVolume != 0i8)
+																			{
+																				const auto dB(VoiceDefinitions::convert_cB_to_dB(modLfoToVolume));
+																				voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(dB * 100.f / static_cast<float>(volume)));
+																			}
 
 																			const auto modLfoToFilterFc(static_cast<int8_t>(region.modLfoToFilterFc));
 																			if(modLfoToFilterFc != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, FILTER_FREQ, modLfoToFilterFc); }
 
-																			const auto unused1(static_cast<int8_t>(region.unused1));
-																			if(unused1 != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(unused1)); }
+																			if(options.m_useConverterSpecificData)
+																			{
+																				const auto LFO1ToAmpPan(static_cast<int8_t>(region.unused1));
+																				if(LFO1ToAmpPan != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(LFO1ToAmpPan)); }
+																			}
 
 																			for(const auto& mod : region.modulators)
 																			{
@@ -566,7 +646,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																							{
 																								if (destOper == sf2cute::SFGenerator())
 																								{
-																									voice.ReplaceOrAddCord(PITCH_WHEEL, PITCH, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									if(srcOper.polarity() == sf2cute::SFControllerPolarity::kBipolar)
+																									{
+																										voice.ReplaceOrAddCord(PITCH_WHEEL, PITCH, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									}
 																								}
 																							}
 																						}
@@ -578,6 +661,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																								{
 																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_POS, FILTER_RES, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																								}
+																								else if(destOper == sf2cute::SFGenerator::kPan)
+																								{
+																									if(srcOper.polarity() == sf2cute::SFControllerPolarity::kBipolar)
+																									{
+																										voice.ReplaceOrAddCord(VELOCITY_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									}
+																								}
 																							}
 																							else if (srcOper.direction() == sf2cute::SFControllerDirection::kDecrease)
 																							{
@@ -585,13 +675,26 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																								{
 																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																								}
-																								else if (destOper == sf2cute::SFGenerator::kUnused4)
+																								else if (destOper == sf2cute::SFGenerator::kAttackModEnv)
 																								{
 																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																								}
 																								else if (destOper == sf2cute::SFGenerator::kInitialFilterFc)
 																								{
 																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																						}
+																						else if(srcOper.general_controller() == sf2cute::SFGeneralController::kNoteOnKeyNumber)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator::kInitialFilterFc)
+																								{
+																									if(srcOper.polarity() == sf2cute::SFControllerPolarity::kBipolar)
+																									{
+																										voice.ReplaceOrAddCord(KEY_POLARITY_CENTER, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									}
 																								}
 																							}
 																						}

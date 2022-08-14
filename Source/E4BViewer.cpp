@@ -209,7 +209,7 @@ void E4BViewer::Render()
 						m_threadPool.queueFunc([&]
 						{
 							constexpr BankConverter converter;
-							if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+							if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile)))
 							{
 								OutputDebugStringA("Successfully converted to E4B! \n");
 							}
@@ -227,7 +227,7 @@ void E4BViewer::Render()
 						m_threadPool.queueFunc([&]
 						{
 							constexpr BankConverter converter;
-							if (converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+							if (converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile)))
 							{
 								OutputDebugStringA("Successfully converted to SF2! \n");
 							}
@@ -381,7 +381,7 @@ void E4BViewer::Render()
 				BROWSEINFO browseInfo{};
 				browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
 
-				ConverterOptions options(m_flipPan, false, true);
+				ConverterOptions options(m_flipPan, m_useConverterSpecificData, false, true);
 
 				LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
 				if (pidl != nullptr)

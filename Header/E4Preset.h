@@ -11,7 +11,10 @@ struct BinaryWriter;
 
 enum EEOSCordSource : uint8_t
 {
+	KEY_POLARITY_POS = 8ui8,
+	KEY_POLARITY_CENTER = 9ui8,
 	VELOCITY_POLARITY_POS = 10ui8,
+	VELOCITY_POLARITY_CENTER = 11ui8,
 	VELOCITY_POLARITY_LESS = 12ui8,
 	PITCH_WHEEL = 16ui8,
 	MIDI_A = 20ui8,
@@ -65,7 +68,7 @@ constexpr auto VOICE_END_DATA_READ_SIZE = 16ull;
 struct E4Envelope final
 {
 	E4Envelope() = default;
-	explicit E4Envelope(double attack, double release);
+	explicit E4Envelope(double attackSec, double decaySec, double holdSec, double releaseSec, float sustainLevel);
 
 	[[nodiscard]] double GetAttack1Sec() const;
 	[[nodiscard]] float GetAttack1Level() const;
@@ -82,8 +85,12 @@ struct E4Envelope final
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
 private:
+	/*
+	 * Uses the ADSR envelope as defined in the Emulator X3 manual
+	 */
+
 	uint8_t m_attack1Sec = 0ui8;
-	int8_t m_attack1Level = 127ui8;
+	int8_t m_attack1Level = 0ui8;
 	uint8_t m_attack2Sec = 0ui8;
 	int8_t m_attack2Level = 127ui8;
 
@@ -143,7 +150,7 @@ struct E4Voice final
 	E4Voice() = default;
 
 	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t coarseTune, int8_t pan, int8_t volume, double fineTune, double keyDelay,
-		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO&& lfo1);
+		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO lfo1);
 
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
 	{
@@ -212,7 +219,7 @@ private:
 	int8_t m_possibleRedundant6 = 0i8;
 	bool m_fixedPitch = false;
 	std::array<int8_t, 2> m_possibleRedundant7{};
-	int8_t m_chorusWidth = 0i8;
+	uint8_t m_chorusWidth = 0ui8;
 
 	int8_t m_chorusAmount = 128i8;
 	std::array<int8_t, 11> m_possibleRedundant8{};

@@ -1,6 +1,12 @@
 #include "Header/VoiceDefinitions.h"
 #include "Header/E4BVariables.h"
+#include <algorithm>
 #include <cmath>
+
+int8_t VoiceDefinitions::convert_dB_to_cB(const float db)
+{
+	return static_cast<int8_t>(std::roundf(db * 10.f));
+}
 
 // TODO: convert to array instead of switch
 std::string VoiceDefinitions::GetMIDINoteFromKey(const uint32_t key)
@@ -203,19 +209,29 @@ double VoiceDefinitions::GetTimeFromCurveAttack(const uint8_t b)
 	return 1.3 * std::pow(2., 0.084 * static_cast<double>(b - 59ui8));
 }
 
-double VoiceDefinitions::GetTimeFromCurveRelease(const uint8_t b)
-{
-	return 1.3 * std::pow(2., 0.2 * static_cast<double>(b - 59ui8));
-}
-
 uint8_t VoiceDefinitions::GetByteFromSecAttack(const double sec)
 {
 	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.084 + 59.));
 }
 
+double VoiceDefinitions::GetTimeFromCurveDecay(const uint8_t b)
+{
+	return 1.3 * std::pow(2., 0.1 * static_cast<double>(b - 59ui8));
+}
+
+uint8_t VoiceDefinitions::GetByteFromSecDecay(const double sec)
+{
+	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.1 + 59.));
+}
+
+double VoiceDefinitions::GetTimeFromCurveRelease(const uint8_t b)
+{
+	return 1.3 * std::pow(2., 0.1 * static_cast<double>(b - 59ui8));
+}
+
 uint8_t VoiceDefinitions::GetByteFromSecRelease(const double sec)
 {
-	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.2 + 59.));
+	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.1 + 59.));
 }
 
 float VoiceDefinitions::GetBottomSectionPercent(const uint8_t value)
@@ -223,9 +239,13 @@ float VoiceDefinitions::GetBottomSectionPercent(const uint8_t value)
 	return std::roundf(static_cast<float>(value) * 100.f / 127.f);
 }
 
-int8_t VoiceDefinitions::ConvertPercentToByteF(const float value, const bool inverted)
+float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)
 {
-	if(inverted) { return static_cast<int8_t>(value * 127.f / 100.f - 128.f); }
+	return std::clamp(GetBottomSectionPercent(value + 128ui8), 0.f, 100.f);
+}
+
+int8_t VoiceDefinitions::ConvertPercentToByteF(const float value)
+{
 	return static_cast<int8_t>(std::roundf(value * 127.f / 100.f));
 }
 

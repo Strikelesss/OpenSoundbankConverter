@@ -442,6 +442,7 @@ struct tsf_region
 	struct tsf_envelope ampenv, modenv;
 	int initialFilterQ, initialFilterFc;
 	int modEnvToPitch, modEnvToFilterFc, modLfoToFilterFc, modLfoToVolume, unused1;
+	float chorusEffectsSend;
 	float delayModLFO;
 	int freqModLFO, modLfoToPitch;
 	float delayVibLFO;
@@ -585,7 +586,7 @@ static void tsf_region_operator(struct tsf_region* region, tsf_u16 genOper, unio
 		{ GEN_UINT_ADD15                   , _TSFREGIONOFFSET(unsigned int, end                  ) }, //12 EndAddrsCoarseOffset
 		{ GEN_INT   | GEN_INT_LIMIT960     , _TSFREGIONOFFSET(         int, modLfoToVolume       ) }, //13 ModLfoToVolume
 		{ GEN_INT   | GEN_INT_LIMIT960     , _TSFREGIONOFFSET(		   int, unused1              ) }, //   Unused Custom
-		{ 0                                , (0                                                  ) }, //15 ChorusEffectsSend (unsupported)
+		{ GEN_FLOAT | GEN_FLOAT_MAX1000    , _TSFREGIONOFFSET(float, chorusEffectsSend           ) }, //15 ChorusEffectsSend (unsupported) Custom
 		{ 0                                , (0                                                  ) }, //16 ReverbEffectsSend (unsupported)
 		{ GEN_FLOAT						   , _TSFREGIONOFFSET(       float, pan                  ) }, //17 Pan
 		{ GEN_INT   | GEN_INT_LIMIT960     , _TSFREGIONOFFSET(		 int, unused2                ) }, //   Unused Custom

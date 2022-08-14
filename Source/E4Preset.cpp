@@ -12,7 +12,7 @@ bool E4LFO::write(BinaryWriter& writer)
 
 float E4Voice::GetChorusWidth() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_chorusWidth);
+	return VoiceDefinitions::GetChorusWidthPercent(m_chorusWidth);
 }
 
 float E4Voice::GetChorusAmount() const
@@ -46,8 +46,8 @@ std::string_view E4Voice::GetFilterType() const
 }
 
 E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t coarseTune, const int8_t pan, const int8_t volume, const double fineTune, const double keyDelay, const float filterQ,
-	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO&& lfo1) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
-	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_coarseTune(coarseTune), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)),
+	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, const E4LFO lfo1) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
+	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_coarseTune(coarseTune), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertChorusWidthToByte(chorusWidth)),
 	m_chorusAmount(VoiceDefinitions::ConvertPercentToByteF(chorusAmount)), m_volume(volume), m_pan(pan), m_filterFrequency(VoiceDefinitions::ConvertFilterFrequencyToByte(filterFreq)),
 	m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)), m_ampEnv(ampEnv), m_filterEnv(filterEnv), m_lfo1(lfo1) {}
 
@@ -169,7 +169,9 @@ bool E4Envelope::write(BinaryWriter& writer)
 		&& writer.writeType(&m_release1Sec) && writer.writeType(&m_release1Level) && writer.writeType(&m_release2Sec) && writer.writeType(&m_release2Level);
 }
 
-E4Envelope::E4Envelope(const double attack, const double release) : m_attack1Sec(VoiceDefinitions::GetByteFromSecAttack(attack)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(release)) {}
+E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const float sustainLevel) :
+	m_attack1Sec(VoiceDefinitions::GetByteFromSecAttack(holdSec)), m_attack2Sec(VoiceDefinitions::GetByteFromSecAttack(attackSec)), m_decay2Sec(VoiceDefinitions::GetByteFromSecAttack(decaySec)),
+	m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(releaseSec)) {}
 
 double E4VoiceEndData::GetFineTune() const
 {
@@ -188,36 +190,36 @@ bool E4VoiceEndData::write(BinaryWriter& writer)
 
 double E4Envelope::GetAttack1Sec() const
 {
-	if(m_attack1Sec > 0) { return VoiceDefinitions::GetTimeFromCurveAttack(m_attack1Sec); }
+	if(m_attack1Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveAttack(m_attack1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetAttack2Sec() const
 {
-	if(m_attack2Sec > 0) { return VoiceDefinitions::GetTimeFromCurveAttack(m_attack2Sec); }
+	if(m_attack2Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveAttack(m_attack2Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay1Sec() const
 {
-	if(m_decay1Sec > 0) { return VoiceDefinitions::GetTimeFromCurveAttack(m_decay1Sec); }
+	if(m_decay1Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay(m_decay1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay2Sec() const
 {
-	if(m_decay2Sec > 0) { return VoiceDefinitions::GetTimeFromCurveAttack(m_decay2Sec); }
+	if(m_decay2Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay(m_decay2Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetRelease1Sec() const
 {
-	if(m_release1Sec > 0) { return VoiceDefinitions::GetTimeFromCurveRelease(m_release1Sec); }
+	if(m_release1Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveRelease(m_release1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetRelease2Sec() const
 {
-	if(m_release2Sec > 0) { return VoiceDefinitions::GetTimeFromCurveRelease(m_release2Sec); }
+	if(m_release2Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveRelease(m_release2Sec); }
 	return 0.;
 }
