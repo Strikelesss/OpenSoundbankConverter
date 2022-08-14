@@ -56,16 +56,23 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			uint16_t sampleMode(0ui16);
 			if (e4Sample.IsLooping()) { sampleMode |= static_cast<uint16_t>(sf2cute::SampleMode::kLoopContinuously); }
-			if (e4Sample.IsReleasing()) { sampleMode |= static_cast<uint16_t>(sf2cute::SampleMode::kLoopEndsByKeyDepression); }
+			if (e4Sample.IsReleasing()) { sampleMode |= 2; }
 
 			const auto& zoneRange(voice.GetZoneRange());
 			const auto& velRange(voice.GetVelocityRange());
 
+			const auto voiceVolBefore(voice.GetVolume());
+			const auto voiceVolume(std::clamp(static_cast<int16_t>(std::abs(voiceVolBefore) * 10i16), 0i16, 144i16)); // Using abs on volume since SF2 does not support negative attenuation
+
 			sf2cute::SFInstrumentZone instrumentZone(sf2.samples()[sampleIndex], std::vector{
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, std::clamp(static_cast<int16_t>(std::abs(voice.GetVolume()) * 10i16), 0i16, 144i16)), // Using abs on volume since SF2 does not support negative attenuation
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.first, zoneRange.second)),
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second))
 			}, std::vector<sf2cute::SFModulatorItem>{});
+
+			if(voiceVolume != 0i16)
+			{
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, voiceVolume));
+			}
 
 			const auto originalKey(voice.GetOriginalKey());
 			if(originalKey != 53ui8)
@@ -79,6 +86,9 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			// Envelope
+
+			const auto ampDelaySec(SF2Converter::secToTimecent(voice.GetKeyDelay()));
+			if (ampDelaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayVolEnv, ampDelaySec)); }
 
 			const auto ampAttackSec(SF2Converter::secToTimecent(voice.GetAmpEnv().GetAttack1Sec()));
 			if (ampAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
@@ -116,30 +126,123 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto filterQ(voice.GetFilterQ());
 			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
 
-			for(const auto& cord : voice.GetCords())
+			// LFO
+
+			// TODO: correct all these LFO values
+
+			//constexpr auto test((127 + 96) * 0.08);
+			const auto lfoFreq(voice.GetLFO1().GetRate());
+			if (lfoFreq != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFreqModLFO, lfoFreq)); }
+
+			const auto lfoDelay(voice.GetLFO1().GetDelay());
+			if (lfoDelay != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModLFO, lfoDelay)); }
+
+			const auto lfoShape(voice.GetLFO1().GetShape());
+			if (lfoShape != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused3, lfoShape)); }
+
+			const auto lfo1KeySync(voice.GetLFO1().IsKeySync());
+			instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, lfo1KeySync));
+
+			// Cords
+			// Unipolar = +
+			// Bipolar = ~
+
+			float cordAmtPercent1(0.f);
+			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, AMP_VOLUME, cordAmtPercent1))
 			{
-				if(cord.GetSource() == 80ui8)
-				{
-					/*
-					constexpr auto m1(VoiceDefinitions::ConvertPercentToByteF(63.6f));
-					const auto m2(std::ceilf(VoiceDefinitions::ConvertByteToPercentF(m1)));
+				// LFO 1 ~ -> Amp Volume
+				const auto db(cordAmtPercent1 * voiceVolume / 100.f);
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToVolume, static_cast<int16_t>(db)));
+			}
 
-					const auto test1(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()));
-					const auto test(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()) * 3000.f / 100.f);
-					const auto modEnvFilter(SF2Converter::FilterFrequencyToCents(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()) * 3000.f / 100.f));
+			float cordAmtPercent2(0.f);
+			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, PITCH, cordAmtPercent2))
+			{
+				// LFO 1 ~ -> Pitch
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToPitch, static_cast<int16_t>(cordAmtPercent2)));
+			}
 
-					// TODO: convert hz to cents
-					*/
+			float cordAmtPercent3(0.f);
+			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, FILTER_FREQ, cordAmtPercent3))
+			{
+				// LFO 1 ~ -> Filter Frequency
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModLfoToFilterFc, static_cast<int16_t>(cordAmtPercent3)));
+			}
 
-					// TODO: mod env to filter fc stuff
-					const auto amount(cord.GetAmount());
-					if(amount != 0ui8)
-					{
-						instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModEnvToFilterFc, -2448i16));
-					}
+			float cordAmtPercent4(0.f);
+			if(voice.GetAmountFromCord(LFO1_POLARITY_CENTER, AMP_PAN, cordAmtPercent4))
+			{
+				// LFO 1 ~ -> Amp Pan
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused1, static_cast<int16_t>(cordAmtPercent4)));
+			}
 
-					break;
-				}
+			float cordAmtPercent5(0.f);
+			if(voice.GetAmountFromCord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, cordAmtPercent5))
+			{
+				// Filter Env + -> Filter Frequency
+				constexpr auto FILTER_FREQUENCY_MAX_HZ(12000.f);
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kModEnvToFilterFc, static_cast<int16_t>(std::clamp(
+					FILTER_FREQUENCY_MAX_HZ * cordAmtPercent5 / 100.f, -FILTER_FREQUENCY_MAX_HZ, FILTER_FREQUENCY_MAX_HZ))));
+			}
+
+			float cordAmtPercent6(0.f);
+			if(voice.GetAmountFromCord(PITCH_WHEEL, PITCH, cordAmtPercent6))
+			{
+				// Pitch Wheel -> Pitch
+				const auto pitchWheel(sf2cute::SFModulator(sf2cute::SFGeneralController::kPitchWheel, sf2cute::SFControllerDirection::kIncrease, 
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(pitchWheel, sf2cute::SFGenerator(), static_cast<int16_t>(cordAmtPercent6), 
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));	
+			}
+
+			float cordAmtPercent7(0.f);
+			if (voice.GetAmountFromCord(MIDI_A, AMP_VOLUME, cordAmtPercent7))
+			{
+				// MIDI A -> Amp Volume
+				const auto midiA(sf2cute::SFModulator(sf2cute::SFMidiController::kController2, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(midiA, sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(cordAmtPercent7),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent8(0.f);
+			if (voice.GetAmountFromCord(VELOCITY_POLARITY_POS, FILTER_RES, cordAmtPercent8))
+			{
+				// Velocity + -> 'Filter Resonance
+				const auto velPos(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnVelocity, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velPos, sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(cordAmtPercent8),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			const auto velLess(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnVelocity, sf2cute::SFControllerDirection::kDecrease,
+				sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+			float cordAmtPercent9(0.f);
+			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, AMP_VOLUME, cordAmtPercent9))
+			{
+				// Velocity < -> Amp Volume
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(cordAmtPercent9),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent10(0.f);
+			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, cordAmtPercent10))
+			{
+				// Velocity < -> Filter Env Attack
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kUnused4, static_cast<int16_t>(cordAmtPercent10),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent11(0.f);
+			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, FILTER_FREQ, cordAmtPercent11))
+			{
+				// Velocity < -> Filter Freq
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(cordAmtPercent11),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
 			}
 
 			// Amplifier / Oscillator
@@ -150,8 +253,16 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto fineTune(voice.GetFineTune());
 			if (fineTune != 0.) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFineTune, static_cast<int16_t>(fineTune))); }
 
+			const auto coarseTune(voice.GetCoarseTune());
+			if (coarseTune != 0i8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kCoarseTune, coarseTune)); }
+
 			const auto chorusSend(voice.GetChorusAmount());
 			if (chorusSend > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kChorusEffectsSend, static_cast<int16_t>(chorusSend * 10.f))); }
+
+			// Other
+
+			const auto attenuationSign(voiceVolBefore > 0 ? 1 : voiceVolBefore < 0 ? -1 : 0);
+			instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused2, static_cast<int16_t>(attenuationSign)));
 
 			instrumentZones.emplace_back(instrumentZone);
 		}
@@ -164,22 +275,35 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 	try 
 	{
-		auto sf2Path(std::filesystem::path(convertedName).wstring());
-		sf2Path.resize(MAX_PATH);
-
-		OPENFILENAME ofn{};
-		ofn.lStructSize = sizeof(ofn);
-		ofn.hwndOwner = nullptr;
-		ofn.lpstrFilter = _T(".sf2");
-		ofn.lpstrFile = sf2Path.data();
-		ofn.nMaxFile = MAX_PATH;
-		ofn.Flags = OFN_EXPLORER;
-		ofn.lpstrDefExt = _T("sf2");
-
-		if (GetSaveFileName(&ofn))
+		if (!options.m_ignoreFileNameSetting)
 		{
-			std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
-			sf2.Write(ofs);
+			auto sf2Path(std::filesystem::path(convertedName).wstring());
+			sf2Path.resize(MAX_PATH);
+
+			OPENFILENAME ofn{};
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = nullptr;
+			ofn.lpstrFilter = _T(".sf2");
+			ofn.lpstrFile = sf2Path.data();
+			ofn.nMaxFile = MAX_PATH;
+			ofn.Flags = OFN_EXPLORER;
+			ofn.lpstrDefExt = _T("sf2");
+
+			if (GetSaveFileName(&ofn))
+			{
+				std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
+				sf2.Write(ofs);
+			}
+		}
+		else
+		{
+			auto path(options.m_ignoreFileNameSettingSaveFolder);
+			if(!path.empty() && exists(path))
+			{
+				auto sf2Path(path.append(std::filesystem::path(convertedName + ".sf2").wstring()));
+				std::ofstream ofs(sf2Path, std::ios::binary);
+				sf2.Write(ofs);
+			}
 		}
 
 		return true;
@@ -253,7 +377,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 					totalSize += static_cast<uint32_t>(E4BVariables::EOS_EMSt_TAG.length());
 
-					// todo: determine length of EMSt, below may be enough if all the other data is redundant (doubtful)
+					// TODO: ensure this is the correct size
 					totalSize += TOTAL_EMST_DATA_SIZE;
 
 					// Byteswap since E4B requires it
@@ -368,38 +492,33 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																		{
 																			const auto region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-
-																			const auto convertedPan(static_cast<int8_t>(std::round(region.pan * 100.f)));
-																			auto pan(options.m_flipPan ? -convertedPan : convertedPan);
+																			auto convertedPan(region.pan / 10.f);
 
 																			// Chicken Translator clamps -50 to 50, while EOS uses -64 to 63
 																			if(options.m_isChickenTranslatorFile)
 																			{
-																				if(pan > 0i8) { pan += 13i8; }
-																				else if(pan < 0i8) { pan -= 14i8; }
+																				constexpr auto PAN_CONVERT_INV(1.f / 0.775f);
+																				if(convertedPan > 0.f || convertedPan < 0.f) { convertedPan *= PAN_CONVERT_INV; }
 																			}
 
-																			const auto volume(static_cast<int8_t>(region.attenuation));
+																			convertedPan = std::round(convertedPan);
+
+																			const auto pan(static_cast<int8_t>(options.m_flipPan ? -convertedPan : convertedPan));
+
+																			auto volume(static_cast<int8_t>(region.attenuation));
+
+																			// Multiply by the sign since SF2 does not support negative attenuation
+																			if(region.unused2 != 0) { volume *= static_cast<int8_t>(region.unused2); }
+
 																			const auto fineTune(static_cast<double>(region.tune));
 																			const auto coarseTune(static_cast<int8_t>(region.transpose));
-																			const auto filterQ(static_cast<float>(region.initialFilterQ) / 10.f);
+																			const auto filterQ(std::roundf(static_cast<float>(region.initialFilterQ) / 10.f));
 
-																			const auto filterEnvPos(region.modEnvToFilterFc);
-																			const auto filterEnvPosHz(tsf_cents2Hertz(std::abs(static_cast<float>(filterEnvPos))));
+																			const auto filterEnvPos(static_cast<float>(region.modEnvToFilterFc));
+																			constexpr auto FILTER_FREQUENCY_MAX_HZ(12000.f);
+																			const auto filterEnvPosPercent(std::roundf(filterEnvPos * 100.f / FILTER_FREQUENCY_MAX_HZ));
 
-																			// TODO: find a good value for this
-																			constexpr auto FILTER_FREQUENCY_MAX_HZ(3000.f); // 8372.22363f
-
-																			float filterEnvPosPercent(0.f);
-																			if(filterEnvPos > 0)
-																			{
-																				filterEnvPosPercent = filterEnvPosHz * 100.f / FILTER_FREQUENCY_MAX_HZ;
-																			}
-																			else if(filterEnvPos < 0)
-																			{
-																				filterEnvPosPercent = -filterEnvPosHz * 100.f / FILTER_FREQUENCY_MAX_HZ;
-																			}
-
+																			const auto lfo1delay(static_cast<double>(region.delayModLFO));
 																			const auto ampEnv(region.ampenv);
 																			const auto keyDelay(static_cast<double>(ampEnv.delay));
 																			const auto ampAttack(static_cast<double>(ampEnv.attack));
@@ -410,13 +529,101 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto filterRelease(static_cast<double>(filterEnv.release));
 
 																			E4Voice voice(0.f, 0.f, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },
-																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampRelease), E4Envelope(filterAttack, filterRelease), 
-																				E4Cord(80ui8, 56ui8, VoiceDefinitions::ConvertPercentToByteF(filterEnvPosPercent)));
+																				{ region.lovel, region.hivel }, E4Envelope(ampAttack, ampRelease), E4Envelope(filterAttack, filterRelease),
+																				E4LFO(static_cast<uint8_t>(region.freqModLFO), static_cast<uint8_t>(region.unused3), lfo1delay, region.unused5));
+
+																			/*
+																			 * Cords
+																			 */
+
+																			voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, PITCH, static_cast<int8_t>(region.modLfoToPitch));
+																			voice.ReplaceOrAddCord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(filterEnvPosPercent));
+
+																			const auto modLfoToVolume(static_cast<int8_t>(region.modLfoToVolume));
+																			if(modLfoToVolume != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_VOLUME, modLfoToVolume); }
+
+																			const auto modLfoToFilterFc(static_cast<int8_t>(region.modLfoToFilterFc));
+																			if(modLfoToFilterFc != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, FILTER_FREQ, modLfoToFilterFc); }
+
+																			const auto unused1(static_cast<int8_t>(region.unused1));
+																			if(unused1 != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(unused1)); }
+
+																			for(const auto& mod : region.modulators)
+																			{
+																				const sf2cute::SFModulator srcOper(mod.modSrcOper);
+																				const auto modAmountF(static_cast<float>(mod.modAmount));
+																				const auto destOper(static_cast<sf2cute::SFGenerator>(mod.modDestOper));
+																				if (mod.modAmount != 0i16)
+																				{
+																					if (srcOper.controller_palette() == sf2cute::SFControllerPalette::kGeneralController)
+																					{
+																						if (srcOper.general_controller() == sf2cute::SFGeneralController::kPitchWheel)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator())
+																								{
+																									voice.ReplaceOrAddCord(PITCH_WHEEL, PITCH, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																						}
+																						else if (srcOper.general_controller() == sf2cute::SFGeneralController::kNoteOnVelocity)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator::kInitialFilterQ)
+																								{
+																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_POS, FILTER_RES, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																							else if (srcOper.direction() == sf2cute::SFControllerDirection::kDecrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator::kInitialAttenuation)
+																								{
+																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																								else if (destOper == sf2cute::SFGenerator::kUnused4)
+																								{
+																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																								else if (destOper == sf2cute::SFGenerator::kInitialFilterFc)
+																								{
+																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																						}
+																					}
+																					else if (srcOper.controller_palette() == sf2cute::SFControllerPalette::kMidiController)
+																					{
+																						if (srcOper.midi_controller() == sf2cute::SFMidiController::kController2)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if(destOper == sf2cute::SFGenerator::kInitialAttenuation)
+																								{
+																									voice.ReplaceOrAddCord(MIDI_A, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																						}
+																					}
+																				}
+																			}
 
 																			const auto originalKey(static_cast<uint8_t>(region.pitch_keycenter));
 																			E4VoiceEndData voiceEnd(region.sampleIndex, originalKey);
 
 																			if(!sampleModes.contains(region.sampleIndex)) { sampleModes[region.sampleIndex] = static_cast<uint8_t>(region.loop_mode); }
+																			else
+																			{
+																				// Account for the weird loop mode issue where it exists for a region and not for another (EOS only supports looping per sample, not per voice..)
+																				if(options.m_isChickenTranslatorFile)
+																				{
+																					if(sampleModes[region.sampleIndex] == TSF_LOOPMODE_NONE && region.loop_mode != TSF_LOOPMODE_NONE)
+																					{
+																						sampleModes[region.sampleIndex] = static_cast<uint8_t>(region.loop_mode);
+																					}
+																				}
+																			}
 
 																			if (voice.write(writer) && voiceEnd.write(writer))
 																			{
@@ -494,11 +701,12 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																// todo: support for stereo
 
-																// Release is on by default for E4B since there is a noticable 'pop' after if it isn't on
-																uint32_t format(MONO_SAMPLE | E4SampleVariables::SAMPLE_RELEASE_FLAG);
+																uint32_t format(MONO_SAMPLE);
 
 																const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
-																if(mode == TSF_LOOPMODE_CONTINUOUS || mode == TSF_LOOPMODE_SUSTAIN) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
+																if(mode == TSF_LOOPMODE_CONTINUOUS) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
+																else if(mode == TSF_LOOPMODE_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG; }
+																else if(mode == TSF_LOOPMODE_CONTINUOUS_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG | E4SampleVariables::SAMPLE_LOOP_FLAG; }
 																
 																if (writer.writeType(&format))
 																{

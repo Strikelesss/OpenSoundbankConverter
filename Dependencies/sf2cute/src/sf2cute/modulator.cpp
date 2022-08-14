@@ -23,8 +23,7 @@ SFModulator::SFModulator(uint16_t value) :
     controller_palette_(SFControllerPalette((value >> 7) & 1)),
     direction_(SFControllerDirection((value >> 8) & 1)),
     polarity_(SFControllerPolarity((value >> 9) & 1)),
-    type_(SFControllerType((value >> 10) & 0x3f)) {
-}
+    type_(SFControllerType((value >> 10) & 0x3f)) {}
 
 /// Constructs a new SFModulator with a general controller.
 SFModulator::SFModulator(SFGeneralController controller,

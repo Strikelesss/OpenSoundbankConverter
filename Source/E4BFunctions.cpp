@@ -79,23 +79,19 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						reader.readTypeAtLocation(&voiceEnd, voicePos + VOICE_DATA_SIZE + k * VOICE_END_DATA_SIZE, VOICE_END_DATA_READ_SIZE);
 
 						auto zoneRange(numVoiceEnds > 1ull ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
+						const auto pan(numVoiceEnds > 1ull ? voiceEnd.GetPan() : voice.GetPan());
+						const auto volume(numVoiceEnds > 1ull ? voiceEnd.GetVolume() : voice.GetVolume());
+						const auto fineTune(numVoiceEnds > 1ull ? voiceEnd.GetFineTune() : voice.GetFineTune());
 
 						// Account for the odd 'multisample' stuff
 						if(numVoiceEnds > 1ull)
 						{
-							if(zoneRange.first == 0x00)
-							{
-								zoneRange.first = voice.GetZoneRange().first;
-							}
-
-							if (zoneRange.second == 0x7f)
-							{
-								zoneRange.second = voice.GetZoneRange().second;
-							}
+							if(zoneRange.first == 0x00) { zoneRange.first = voice.GetZoneRange().first; }
+							if (zoneRange.second == 0x7f) { zoneRange.second = voice.GetZoneRange().second; }
 						}
 
-						std::array cords(voice.GetCords());
-						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), std::move(cords)));
+						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), 
+							volume, pan, fineTune, voice.GetCords()));
 					}
 
 					voicePos += static_cast<uint64_t>(voiceSize);

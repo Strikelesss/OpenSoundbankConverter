@@ -186,6 +186,7 @@
     <ClCompile Include="Source\E4BFunctions.cpp" />
     <ClCompile Include="Source\E4BViewer.cpp" />
     <ClCompile Include="Source\E4Preset.cpp" />
+    <ClCompile Include="Source\ThreadPool.cpp" />
     <ClCompile Include="Source\VoiceDefinitions.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -236,6 +237,7 @@
     <ClInclude Include="Header\E4BViewer.h" />
     <ClInclude Include="Header\E4BVariables.h" />
     <ClInclude Include="Header\E4Preset.h" />
+    <ClInclude Include="Header\ThreadPool.h" />
     <ClInclude Include="Header\VoiceDefinitions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

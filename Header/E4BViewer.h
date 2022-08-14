@@ -1,4 +1,5 @@
 #pragma once
+#include "Header/ThreadPool.h"
 #include <array>
 #include <d3d11.h>
 #include <filesystem>
@@ -30,6 +31,10 @@ namespace E4BViewer
 
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+	// Other
+
+	inline ThreadPool m_threadPool(8u);
+
 	// Rendering
 
 	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
@@ -53,4 +58,5 @@ namespace E4BViewer
 	inline std::filesystem::path m_currentSearchPath;
 	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false, m_isChickenTranslatorFile = false;
 	inline EBankType m_currentBankType;
+	inline std::atomic_uint32_t m_banksInProgress = 0u;
 }

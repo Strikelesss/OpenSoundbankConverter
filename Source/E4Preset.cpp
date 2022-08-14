@@ -6,7 +6,7 @@
 bool E4LFO::write(BinaryWriter& writer)
 {
 	constexpr std::array<int8_t, 3> redundant{};
-	return writer.writeType(&m_rate) && writer.writeType(&m_possibleRedundant1) && writer.writeType(&m_delay) && writer.writeType(&m_variation)
+	return writer.writeType(&m_rate) && writer.writeType(&m_shape) && writer.writeType(&m_delay) && writer.writeType(&m_variation)
 		&& writer.writeType(&m_keySync) && writer.writeType(redundant.data(), sizeof(int8_t) * redundant.size());
 }
 
@@ -40,21 +40,11 @@ std::string_view E4Voice::GetFilterType() const
 	return VoiceDefinitions::GetFilterTypeFromByte(m_filterType);
 }
 
-E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t coarseTune, const int8_t pan, const int8_t volume, const double fineTune, const double keyDelay, const float filterQ, 
-	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4Cord&& filterEnvPosCord) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
-	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_coarseTune(coarseTune), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)),
-	m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)), m_chorusAmount(VoiceDefinitions::ConvertPercentToByteF(chorusAmount)), m_volume(volume), m_pan(pan),
-	m_filterFrequency(VoiceDefinitions::ConvertFilterFrequencyToByte(filterFreq)), m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)), m_ampEnv(ampEnv), m_filterEnv(filterEnv)
-{
-	for(auto& cord : m_cords)
-	{
-		if(cord.GetSource() == filterEnvPosCord.GetSource())
-		{
-			cord = filterEnvPosCord;
-			break;
-		}
-	}
-}
+E4Voice::E4Voice(const float chorusWidth, const float chorusAmount, const uint16_t filterFreq, const int8_t coarseTune, const int8_t pan, const int8_t volume, const double fineTune, const double keyDelay, const float filterQ,
+	const std::pair<uint8_t, uint8_t> zone, const std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO&& lfo1) : m_lowZone(zone.first), m_highZone(zone.second), m_minVelocity(velocity.first), m_maxVelocity(velocity.second),
+	m_keyDelay(_byteswap_ushort(static_cast<uint16_t>(keyDelay * 1000.))), m_coarseTune(coarseTune), m_fineTune(VoiceDefinitions::ConvertFineTuneToByte(fineTune)), m_chorusWidth(VoiceDefinitions::ConvertPercentToByteF(chorusWidth, true)),
+	m_chorusAmount(VoiceDefinitions::ConvertPercentToByteF(chorusAmount)), m_volume(volume), m_pan(pan), m_filterFrequency(VoiceDefinitions::ConvertFilterFrequencyToByte(filterFreq)),
+	m_filterQ(VoiceDefinitions::ConvertPercentToByteF(filterQ)), m_ampEnv(ampEnv), m_filterEnv(filterEnv), m_lfo1(std::move(lfo1)) {}
 
 bool E4Voice::write(BinaryWriter& writer)
 {
@@ -66,8 +56,8 @@ bool E4Voice::write(BinaryWriter& writer)
 		&& writer.writeType(&m_chorusWidth) && writer.writeType(&m_chorusAmount) && writer.writeType(m_possibleRedundant8.data(), sizeof(int8_t) * m_possibleRedundant8.size()) && writer.writeType(&m_volume)
 		&& writer.writeType(&m_pan) && writer.writeType(m_possibleRedundant9.data(), sizeof(int8_t) * m_possibleRedundant9.size()))
 	{
-		// If the filter frequency isn't 20,000, pick 4 Pole Lowpass, if it is, pick No Filter
-		const auto filterType(m_filterFrequency < 255ui8 ? 0ui8 : 127ui8);
+		// If the filter frequency isn't 20,000, pick 4 Pole Lowpass, if it is, pick No Filter if it has no filter resonance
+		const auto filterType(m_filterFrequency < 255ui8 ? 0ui8 : m_filterQ > 0ui8 ? 0ui8 : 127ui8);
 
 		if (writer.writeType(&filterType) && writer.writeType(&m_possibleRedundant10) && writer.writeType(&m_filterFrequency) && writer.writeType(&m_filterQ) &&
 			writer.writeType(m_possibleRedundant11.data(), sizeof(int8_t) * m_possibleRedundant11.size()))
@@ -86,12 +76,55 @@ bool E4Voice::write(BinaryWriter& writer)
 	return false;
 }
 
+void E4Voice::ReplaceOrAddCord(const uint8_t src, const uint8_t dst, const float amount)
+{
+	// Replace if existing
+	for(auto& cord : m_cords)
+	{
+		if(cord.GetSource() == src && cord.GetDest() == dst)
+		{
+			cord.SetAmount(static_cast<int8_t>(amount));
+			return;
+		}
+	}
+
+	// Replace null cord
+	for(auto& cord : m_cords)
+	{
+		if(cord.GetSource() == 0ui8 && cord.GetDest() == 0ui8)
+		{
+			cord.SetAmount(static_cast<int8_t>(amount));
+			cord.SetSrc(src);
+			cord.SetDst(dst);
+			break;
+		}
+	}
+}
+
 bool E4EMSt::write(BinaryWriter& writer)
 {
 	const uint32_t emstLen(_byteswap_ulong(TOTAL_EMST_DATA_SIZE));
 	return writer.writeType(&emstLen) && writer.writeType(m_possibleRedundant1.data(), sizeof(int8_t) * m_possibleRedundant1.size())
 		&& writer.writeType(m_name.data(), sizeof(char) * m_name.size()) && writer.writeType(m_possibleRedundant2.data(), sizeof(int8_t) * m_possibleRedundant2.size())
 		&& writer.writeType(&m_currentPreset) && writer.writeType(m_possibleRedundant3.data(), sizeof(int8_t) * m_possibleRedundant3.size());
+}
+
+bool E4VoiceResult::GetAmountFromCord(const uint8_t src, const uint8_t dst, float& outAmount) const
+{
+	for(const auto& cord : m_cords)
+	{
+		if(cord.GetSource() == src && cord.GetDest() == dst)
+		{
+			const auto amount(cord.GetAmount());
+			if(amount != 0i8)
+			{
+				outAmount = std::roundf(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()));
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 float E4Envelope::GetAttack1Level() const
@@ -133,13 +166,19 @@ bool E4Envelope::write(BinaryWriter& writer)
 
 E4Envelope::E4Envelope(const double attack, const double release) : m_attack1Sec(VoiceDefinitions::GetByteFromSecAttack(attack)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(release)) {}
 
+double E4VoiceEndData::GetFineTune() const
+{
+	return VoiceDefinitions::ConvertByteToFineTune(m_fineTune);
+}
+
 bool E4VoiceEndData::write(BinaryWriter& writer)
 {
-	constexpr std::array<int8_t, 9> redundant{};
+	constexpr std::array<int8_t, 6> redundant{};
 	return writer.writeType(&m_lowZone) && writer.writeType(m_possibleRedundant1.data(), sizeof(int8_t) * m_possibleRedundant1.size())
 		&& writer.writeType(&m_highZone) && writer.writeType(m_possibleRedundant2.data(), sizeof(int8_t) * m_possibleRedundant2.size())
-		&& writer.writeType(&m_sampleIndex) && writer.writeType(m_possibleRedundant3.data(), sizeof(int8_t) * m_possibleRedundant3.size())
-		&& writer.writeType(&m_originalKey) && writer.writeType(redundant.data(), sizeof(int8_t) * redundant.size());
+		&& writer.writeType(&m_sampleIndex) && writer.writeType(&m_possibleRedundant3) && writer.writeType(&m_fineTune)
+		&& writer.writeType(&m_originalKey) && writer.writeType(&m_volume) && writer.writeType(&m_pan) && writer.writeType(&m_possibleRedundant4)
+		&& writer.writeType(redundant.data(), sizeof(int8_t) * redundant.size());
 }
 
 double E4Envelope::GetAttack1Sec() const

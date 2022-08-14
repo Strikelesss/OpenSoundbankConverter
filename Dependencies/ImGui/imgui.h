@@ -65,7 +65,7 @@ Index of this file:
 // Version
 // (Integer encoded as XYYZZ for use in #if preprocessor conditionals. Work in progress versions typically starts at XYY99 then bounce up to XYY00, XYY01 etc. when release tagging happens)
 #define IMGUI_VERSION               "1.89 WIP"
-#define IMGUI_VERSION_NUM           18804
+#define IMGUI_VERSION_NUM           18808
 #define IMGUI_CHECKVERSION()        ImGui::DebugCheckVersionAndDataLayout(IMGUI_VERSION, sizeof(ImGuiIO), sizeof(ImGuiStyle), sizeof(ImVec2), sizeof(ImVec4), sizeof(ImDrawVert), sizeof(ImDrawIdx))
 #define IMGUI_HAS_TABLE
 
@@ -150,6 +150,7 @@ struct ImGuiIO;                     // Main configuration and I/O between your a
 struct ImGuiInputTextCallbackData;  // Shared state of InputText() when using custom ImGuiInputTextCallback (rare/advanced use)
 struct ImGuiKeyData;                // Storage for ImGuiIO and IsKeyDown(), IsKeyPressed() etc functions.
 struct ImGuiListClipper;            // Helper to manually clip large list of items
+struct ImGuiMultiSelectData;        // State for a BeginMultiSelect() block
 struct ImGuiOnceUponAFrame;         // Helper for running a block of code not more than once a frame
 struct ImGuiPayload;                // User data payload for drag and drop operations
 struct ImGuiPlatformImeData;        // Platform IME data for io.SetPlatformImeDataFn() function.
@@ -190,6 +191,7 @@ typedef int ImGuiHoveredFlags;      // -> enum ImGuiHoveredFlags_    // Flags: f
 typedef int ImGuiInputTextFlags;    // -> enum ImGuiInputTextFlags_  // Flags: for InputText(), InputTextMultiline()
 typedef int ImGuiModFlags;          // -> enum ImGuiModFlags_        // Flags: for io.KeyMods (Ctrl/Shift/Alt/Super)
 typedef int ImGuiPopupFlags;        // -> enum ImGuiPopupFlags_      // Flags: for OpenPopup*(), BeginPopupContext*(), IsPopupOpen()
+typedef int ImGuiMultiSelectFlags;  // -> enum ImGuiMultiSelectFlags_// Flags: for BeginMultiSelect()
 typedef int ImGuiSelectableFlags;   // -> enum ImGuiSelectableFlags_ // Flags: for Selectable()
 typedef int ImGuiSliderFlags;       // -> enum ImGuiSliderFlags_     // Flags: for DragFloat(), DragInt(), SliderFloat(), SliderInt() etc.
 typedef int ImGuiTabBarFlags;       // -> enum ImGuiTabBarFlags_     // Flags: for BeginTabBar()
@@ -493,8 +495,6 @@ namespace ImGui
     IMGUI_API bool          SmallButton(const char* label);                                 // button with FramePadding=(0,0) to easily embed within text
     IMGUI_API bool          InvisibleButton(const char* str_id, const ImVec2& size, ImGuiButtonFlags flags = 0); // flexible button behavior without the visuals, frequently useful to build custom behaviors using the public api (along with IsItemActive, IsItemHovered, etc.)
     IMGUI_API bool          ArrowButton(const char* str_id, ImGuiDir dir);                  // square button with an arrow shape
-    IMGUI_API void          Image(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1,1), const ImVec4& tint_col = ImVec4(1,1,1,1), const ImVec4& border_col = ImVec4(0,0,0,0));
-    IMGUI_API bool          ImageButton(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0, 0),  const ImVec2& uv1 = ImVec2(1,1), int frame_padding = -1, const ImVec4& bg_col = ImVec4(0,0,0,0), const ImVec4& tint_col = ImVec4(1,1,1,1));    // <0 frame_padding uses default frame padding settings. 0 for no padding
     IMGUI_API bool          Checkbox(const char* label, bool* v);
     IMGUI_API bool          CheckboxFlags(const char* label, int* flags, int flags_value);
     IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
@@ -502,6 +502,11 @@ namespace ImGui
     IMGUI_API bool          RadioButton(const char* label, int* v, int v_button);           // shortcut to handle the above pattern when value is an integer
     IMGUI_API void          ProgressBar(float fraction, const ImVec2& size_arg = ImVec2(-FLT_MIN, 0), const char* overlay = NULL);
     IMGUI_API void          Bullet();                                                       // draw a small circle + keep the cursor on the same line. advance cursor x position by GetTreeNodeToLabelSpacing(), same distance that TreeNode() uses
+
+    // Widgets: Images
+    // - Read about ImTextureID here: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
+    IMGUI_API void          Image(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& tint_col = ImVec4(1, 1, 1, 1), const ImVec4& border_col = ImVec4(0, 0, 0, 0));
+    IMGUI_API bool          ImageButton(const char* str_id, ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1));
 
     // Widgets: Combo Box
     // - The BeginCombo()/EndCombo() api allows you to manage your contents and selection state however you want it, by creating e.g. Selectable() items.
@@ -611,6 +616,14 @@ namespace ImGui
     // - Neighbors selectable extend their highlight bounds in order to leave no gap between them. This is so a series of selected Selectable appear contiguous.
     IMGUI_API bool          Selectable(const char* label, bool selected = false, ImGuiSelectableFlags flags = 0, const ImVec2& size = ImVec2(0, 0)); // "bool selected" carry the selection state (read-only). Selectable() is clicked is returns true so you can modify your selection state. size.x==0.0: use remaining width, size.x>0.0: specify width. size.y==0.0: use label height, size.y>0.0: specify height
     IMGUI_API bool          Selectable(const char* label, bool* p_selected, ImGuiSelectableFlags flags = 0, const ImVec2& size = ImVec2(0, 0));      // "bool* p_selected" point to the selection state (read-write), as a convenient helper.
+
+    // Multi-selection system for Selectable() and TreeNode() functions.
+    // This enables standard multi-selection/range-selection idioms (CTRL+Click/Arrow, SHIFT+Click/Arrow, etc) in a way that allow items to be fully clipped (= not submitted at all) when not visible.
+    // Read comments near ImGuiMultiSelectData for details.
+    // When enabled, Selectable() and TreeNode() functions will return true when selection needs toggling.
+    IMGUI_API ImGuiMultiSelectData* BeginMultiSelect(ImGuiMultiSelectFlags flags, void* range_ref, bool range_ref_is_selected);
+    IMGUI_API ImGuiMultiSelectData* EndMultiSelect();
+    IMGUI_API void                  SetNextItemSelectionData(void* item_data);
 
     // Widgets: List Boxes
     // - This is essentially a thin wrapper to using BeginChild/EndChild with some stylistic changes.
@@ -831,6 +844,7 @@ namespace ImGui
     IMGUI_API bool          IsItemDeactivated();                                                // was the last item just made inactive (item was previously active). Useful for Undo/Redo patterns with widgets that requires continuous editing.
     IMGUI_API bool          IsItemDeactivatedAfterEdit();                                       // was the last item just made inactive and made a value change when it was active? (e.g. Slider/Drag moved). Useful for Undo/Redo patterns with widgets that requires continuous editing. Note that you may get false positives (some widgets such as Combo()/ListBox()/Selectable() will return true even when clicking an already selected item).
     IMGUI_API bool          IsItemToggledOpen();                                                // was the last item open state toggled? set by TreeNode().
+    IMGUI_API bool          IsItemToggledSelection();                                           // was the last item selection state toggled? (after Selectable(), TreeNode() etc. We only returns toggle _event_ in order to handle clipping correctly)
     IMGUI_API bool          IsAnyItemHovered();                                                 // is any item hovered?
     IMGUI_API bool          IsAnyItemActive();                                                  // is any item active?
     IMGUI_API bool          IsAnyItemFocused();                                                 // is any item focused?
@@ -1704,6 +1718,19 @@ enum ImGuiMouseCursor_
     ImGuiMouseCursor_COUNT
 };
 
+// Flags for BeginMultiSelect().
+// This system is designed to allow mouse/keyboard multi-selection, including support for range-selection (SHIFT + click),
+// which is difficult to re-implement manually. If you disable multi-selection with ImGuiMultiSelectFlags_NoMultiSelect
+// (which is provided for consistency and flexibility), the whole BeginMultiSelect() system becomes largely overkill as
+// you can handle single-selection in a simpler manner by just calling Selectable() and reacting on clicks yourself.
+enum ImGuiMultiSelectFlags_
+{
+    ImGuiMultiSelectFlags_None              = 0,
+    ImGuiMultiSelectFlags_NoMultiSelect     = 1 << 0,
+    ImGuiMultiSelectFlags_NoUnselect        = 1 << 1,   // Disable unselecting items with CTRL+Click, CTRL+Space etc.
+    ImGuiMultiSelectFlags_NoSelectAll       = 1 << 2,   // Disable CTRL+A shortcut to set RequestSelectAll
+};
+
 // Enumeration for ImGui::SetWindow***(), SetNextWindow***(), SetNextItem***() functions
 // Represent a condition.
 // Important: Treat as a regular enum! Do NOT combine multiple values using binary operators! All the functions above treat 0 as a shortcut to ImGuiCond_Always.
@@ -1900,7 +1927,7 @@ struct ImGuiIO
     float       MouseDoubleClickTime;           // = 0.30f          // Time for a double-click, in seconds.
     float       MouseDoubleClickMaxDist;        // = 6.0f           // Distance threshold to stay in to validate a double-click, in pixels.
     float       MouseDragThreshold;             // = 6.0f           // Distance threshold before considering we are dragging.
-    float       KeyRepeatDelay;                 // = 0.250f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
+    float       KeyRepeatDelay;                 // = 0.275f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
     float       KeyRepeatRate;                  // = 0.050f         // When holding a key/button, rate at which it repeats, in seconds.
     void*       UserData;                       // = NULL           // Store your own data for retrieval by callbacks.
 
@@ -2301,6 +2328,61 @@ struct ImGuiListClipper
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
     inline ImGuiListClipper(int items_count, float items_height = -1.0f) { memset(this, 0, sizeof(*this)); ItemsCount = -1; Begin(items_count, items_height); } // [removed in 1.79]
 #endif
+};
+
+// Abstract:
+// - This system helps you implements standard multi-selection idioms (CTRL+Click/Arrow, SHIFT+Click/Arrow, etc) in a way that allow
+//   selectable items to be fully clipped (= not submitted at all) when not visible. Clipping is typically provided by ImGuiListClipper.
+//   Handling all of this in a single pass imgui is a little tricky, and this is why we provide those functionalities.
+//   Note however that if you don't need SHIFT+Click/Arrow range-select + clipping, you can handle a simpler form of multi-selection
+//   yourself, by reacting to click/presses on Selectable() items and checking keyboard modifiers.
+//   The unusual complexity of this system is mostly caused by supporting SHIFT+Click/Arrow range-select with clipped elements.
+// - TreeNode() and Selectable() are supported.
+// - The work involved to deal with multi-selection differs whether you want to only submit visible items (and clip others) or submit all items
+//   regardless of their visibility. Clipping items is more efficient and will allow you to deal with large lists (1k~100k items) with near zero
+//   performance penalty, but requires a little more work on the code. If you only have a few hundreds elements in your possible selection set,
+//   you may as well not bother with clipping, as the cost should be negligible (as least on Dear ImGui side).
+//   If you are not sure, always start without clipping and you can work your way to the more optimized version afterwards.
+// - The void* RangeSrc/RangeDst value represent a selectable object. They are the values you pass to SetNextItemSelectionData().
+//   Storing an integer index is the easiest thing to do, as SetRange requests will give you two end points and you will need to interpolate
+//   between them to honor range selection. But the code never assume that sortable integers are used (you may store pointers to your object,
+//   and then from the pointer have your own way of iterating from RangeSrc to RangeDst).
+// - In the spirit of Dear ImGui design, your code own the selection data. So this is designed to handle all kind of selection data:
+//   e.g. instructive selection (store a bool inside each object), external array (store an array aside from your objects),
+//   hash/map/set (store only selected items in a hash/map/set), or other structures (store indices in an interval tree), etc.
+// Usage flow:
+//   1) Call BeginMultiSelect() with the last saved value of ->RangeSrc and its selection state.
+//      It is because you need to pass its selection state (and you own selection) that we don't store this value in Dear ImGui.
+//      (For the initial frame or when resetting your selection state: you may use the value for your first item or a "null" value that matches the type stored in your void*).
+//   2) Honor Clear/SelectAll requests by updating your selection data. [Only required if you are using a clipper in step 4]
+//   3) Set RangeSrcPassedBy=true if the RangeSrc item is part of the items clipped before the first submitted/visible item. [Only required if you are using a clipper in step 4]
+//      This is because for range-selection we need to know if we are currently "inside" or "outside" the range.
+//      If you are using integer indices everywhere, this is easy to compute: if (clipper.DisplayStart > (int)data->RangeSrc) { data->RangeSrcPassedBy = true; }
+//   4) Submit your items with SetNextItemSelectionData() + Selectable()/TreeNode() calls.
+//      Call IsItemToggledSelection() to query if the selection state has been toggled, if you need the info immediately for your display (before EndMultiSelect()).
+//      When cannot return a "IsItemSelected()" value because we need to consider clipped/unprocessed items, this is why we return a "Toggle" event instead.
+//   5) Call EndMultiSelect(). Save the value of ->RangeSrc for the next frame (you may convert the value in a format that is safe for persistance)
+//   6) Honor Clear/SelectAll/SetRange requests by updating your selection data. Always process them in this order (as you will receive Clear+SetRange request simultaneously)
+// If you submit all items (no clipper), Step 2 and 3 and will be handled by Selectable() on a per-item basis.
+#define IMGUI_HAS_MULTI_SELECT      // Multi-Select/Range-Select WIP branch // <-- This is currently _not_ in the top of imgui.h to prevent merge conflicts.
+struct ImGuiMultiSelectData
+{
+    bool    RequestClear;           // Begin, End   // Request user to clear selection
+    bool    RequestSelectAll;       // Begin, End   // Request user to select all
+    bool    RequestSetRange;        // End          // Request user to set or clear selection in the [RangeSrc..RangeDst] range
+    bool    RangeSrcPassedBy;       // In loop      // (If clipping) Need to be set by user if RangeSrc was part of the clipped set before submitting the visible items. Ignore if not clipping.
+    bool    RangeValue;             // End          // End: parameter from RequestSetRange request. True = Select Range, False = Unselect range.
+    void*   RangeSrc;               // Begin, End   // End: parameter from RequestSetRange request + you need to save this value so you can pass it again next frame. / Begin: this is the value you passed to BeginMultiSelect()
+    void*   RangeDst;               // End          // End: parameter from RequestSetRange request.
+    int     RangeDirection;         // End          // End: parameter from RequestSetRange request. +1 if RangeSrc came before RangeDst, -1 otherwise. Available as an indicator in case you cannot infer order from the void* values.
+
+    ImGuiMultiSelectData()  { Clear(); }
+    void Clear()
+    {
+        RequestClear = RequestSelectAll = RequestSetRange = RangeSrcPassedBy = RangeValue = false;
+        RangeSrc = RangeDst = NULL;
+        RangeDirection = 0;
+    }
 };
 
 // Helpers macros to generate 32-bit encoded colors
@@ -2949,6 +3031,8 @@ namespace ImGui
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 namespace ImGui
 {
+    // OBSOLETED in 1.89 (from August 2022)
+    IMGUI_API bool      ImageButton(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0, 0), const ImVec2& uv1 = ImVec2(1, 1), int frame_padding = -1, const ImVec4& bg_col = ImVec4(0, 0, 0, 0), const ImVec4& tint_col = ImVec4(1, 1, 1, 1)); // Use new ImageButton() signature (explicit item id, regular FramePadding)
     // OBSOLETED in 1.88 (from May 2022)
     static inline void  CaptureKeyboardFromApp(bool want_capture_keyboard = true)   { SetNextFrameWantCaptureKeyboard(want_capture_keyboard); } // Renamed as name was misleading + removed default value.
     static inline void  CaptureMouseFromApp(bool want_capture_mouse = true)         { SetNextFrameWantCaptureMouse(want_capture_mouse); }       // Renamed as name was misleading + removed default value.

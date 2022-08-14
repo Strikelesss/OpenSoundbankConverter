@@ -17,7 +17,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <windows.h>
 #include <windowsx.h> // GET_X_LPARAM(), GET_Y_LPARAM()
+#include <tchar.h>
 #include <dwmapi.h>
 
 // Configuration flags to add in your imconfig.h file:
@@ -275,8 +277,8 @@ static void ImGui_ImplWin32_UpdateGamepads()
 #ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
     ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplWin32_Data* bd = ImGui_ImplWin32_GetBackendData();
-    if ((io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) == 0)
-        return;
+    //if ((io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) == 0) // FIXME: Technically feeding gamepad shouldn't depend on this now that they are regular inputs.
+    //    return;
 
     // Calling XInputGetState() every frame on disconnected gamepads is unfortunately too slow.
     // Instead we refresh gamepad availability by calling XInputGetCapabilities() _only_ after receiving WM_DEVICECHANGE.

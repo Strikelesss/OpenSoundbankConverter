@@ -122,6 +122,7 @@ struct ImGuiGroupData;              // Stacked storage data for BeginGroup()/End
 struct ImGuiInputTextState;         // Internal state of the currently focused/edited text input box
 struct ImGuiLastItemData;           // Status storage for last submitted items
 struct ImGuiMenuColumns;            // Simple column measurement, currently used for MenuItem() only
+struct ImGuiMultiSelectState;       // Multi-selection state
 struct ImGuiNavItemData;            // Result of a gamepad/keyboard directional navigation move query result
 struct ImGuiMetricsConfig;          // Storage for ShowMetricsWindow() and DebugNodeXXX() functions
 struct ImGuiNextWindowData;         // Storage for SetNextWindow** functions
@@ -148,7 +149,7 @@ struct ImGuiWindowSettings;         // Storage for a window .ini settings (we ke
 typedef int ImGuiLayoutType;            // -> enum ImGuiLayoutType_         // Enum: Horizontal or vertical
 typedef int ImGuiActivateFlags;         // -> enum ImGuiActivateFlags_      // Flags: for navigation/focus function (will be for ActivateItem() later)
 typedef int ImGuiDebugLogFlags;         // -> enum ImGuiDebugLogFlags_      // Flags: for ShowDebugLogWindow(), g.DebugLogFlags
-typedef int ImGuiInputReadFlags;        // -> enum ImGuiInputReadFlags_     // Flags: for IsKeyPressedEx()
+typedef int ImGuiInputFlags;            // -> enum ImGuiInputFlags_         // Flags: for IsKeyPressedEx()
 typedef int ImGuiItemFlags;             // -> enum ImGuiItemFlags_          // Flags: for PushItemFlag()
 typedef int ImGuiItemStatusFlags;       // -> enum ImGuiItemStatusFlags_    // Flags: for DC.LastItemStatusFlags
 typedef int ImGuiOldColumnFlags;        // -> enum ImGuiOldColumnFlags_     // Flags: for BeginColumns()
@@ -1093,18 +1094,20 @@ struct ImGuiNextWindowData
 
 enum ImGuiNextItemDataFlags_
 {
-    ImGuiNextItemDataFlags_None     = 0,
-    ImGuiNextItemDataFlags_HasWidth = 1 << 0,
-    ImGuiNextItemDataFlags_HasOpen  = 1 << 1,
+    ImGuiNextItemDataFlags_None             = 0,
+    ImGuiNextItemDataFlags_HasWidth         = 1 << 0,
+    ImGuiNextItemDataFlags_HasOpen          = 1 << 1,
+    ImGuiNextItemDataFlags_HasSelectionData = 1 << 2,
 };
 
 struct ImGuiNextItemData
 {
     ImGuiNextItemDataFlags      Flags;
-    float                       Width;          // Set by SetNextItemWidth()
-    ImGuiID                     FocusScopeId;   // Set by SetNextItemMultiSelectData() (!= 0 signify value has been set, so it's an alternate version of HasSelectionData, we don't use Flags for this because they are cleared too early. This is mostly used for debugging)
+    float                       Width;                  // Set by SetNextItemWidth()
+    ImGuiID                     FocusScopeId;           // Set by SetNextItemMultiSelectData() (!= 0 signify value has been set, so it's an alternate version of HasSelectionData, we don't use Flags for this because they are cleared too early. This is mostly used for debugging)
     ImGuiCond                   OpenCond;
-    bool                        OpenVal;        // Set by SetNextItemOpen()
+    bool                        OpenVal;                // Set by SetNextItemOpen()
+    void*                       SelectionData;          // Set by SetNextItemSelectionData() (note that NULL/0 is a valid value)
 
     ImGuiNextItemData()         { memset(this, 0, sizeof(*this)); }
     inline void ClearFlags()    { Flags = ImGuiNextItemDataFlags_None; } // Also cleared manually by ItemAdd()!
@@ -1175,6 +1178,8 @@ enum ImGuiKeyPrivate_
 {
     ImGuiKey_LegacyNativeKey_BEGIN  = 0,
     ImGuiKey_LegacyNativeKey_END    = 512,
+    ImGuiKey_Keyboard_BEGIN         = ImGuiKey_NamedKey_BEGIN,
+    ImGuiKey_Keyboard_END           = ImGuiKey_GamepadStart,
     ImGuiKey_Gamepad_BEGIN          = ImGuiKey_GamepadStart,
     ImGuiKey_Gamepad_END            = ImGuiKey_GamepadRStickDown + 1,
     ImGuiKey_Aliases_BEGIN          = ImGuiKey_MouseLeft,
@@ -1236,6 +1241,7 @@ struct ImGuiInputEvent
         ImGuiInputEventText         Text;           // if Type == ImGuiInputEventType_Text
         ImGuiInputEventAppFocused   AppFocused;     // if Type == ImGuiInputEventType_Focus
     };
+    bool                            IgnoredAsSame;
     bool                            AddedByTestEngine;
 
     ImGuiInputEvent() { memset(this, 0, sizeof(*this)); }
@@ -1243,15 +1249,15 @@ struct ImGuiInputEvent
 
 // Flags for IsKeyPressedEx(). In upcoming feature this will be used more (and IsKeyPressedEx() renamed)
 // Don't mistake with ImGuiInputTextFlags! (for ImGui::InputText() function)
-enum ImGuiInputReadFlags_
+enum ImGuiInputFlags_
 {
     // Flags for IsKeyPressedEx()
-    ImGuiInputReadFlags_None                = 0,
-    ImGuiInputReadFlags_Repeat              = 1 << 0,   // Return true on successive repeats. Default for legacy IsKeyPressed(). NOT Default for legacy IsMouseClicked(). MUST BE == 1.
-    ImGuiInputReadFlags_RepeatRateDefault   = 1 << 1,   // Repeat rate: Regular (default)
-    ImGuiInputReadFlags_RepeatRateNavMove   = 1 << 2,   // Repeat rate: Fast
-    ImGuiInputReadFlags_RepeatRateNavTweak  = 1 << 3,   // Repeat rate: Faster
-    ImGuiInputReadFlags_RepeatRateMask_     = ImGuiInputReadFlags_RepeatRateDefault | ImGuiInputReadFlags_RepeatRateNavMove | ImGuiInputReadFlags_RepeatRateNavTweak,
+    ImGuiInputFlags_None                = 0,
+    ImGuiInputFlags_Repeat              = 1 << 0,   // Return true on successive repeats. Default for legacy IsKeyPressed(). NOT Default for legacy IsMouseClicked(). MUST BE == 1.
+    ImGuiInputFlags_RepeatRateDefault   = 1 << 1,   // Repeat rate: Regular (default)
+    ImGuiInputFlags_RepeatRateNavMove   = 1 << 2,   // Repeat rate: Fast
+    ImGuiInputFlags_RepeatRateNavTweak  = 1 << 3,   // Repeat rate: Faster
+    ImGuiInputFlags_RepeatRateMask_     = ImGuiInputFlags_RepeatRateDefault | ImGuiInputFlags_RepeatRateNavMove | ImGuiInputFlags_RepeatRateNavTweak,
 };
 
 //-----------------------------------------------------------------------------
@@ -1354,9 +1360,10 @@ struct ImGuiNavItemData
     float               DistBox;        //      Move    // Best candidate box distance to current NavId
     float               DistCenter;     //      Move    // Best candidate center distance to current NavId
     float               DistAxial;      //      Move    // Best candidate axial distance to current NavId
+    bool                HasSelectionData; //    Move    // Copy of (NextItemData.Flags & ImGuiNextItemDataFlags_HasSelection)
 
     ImGuiNavItemData()  { Clear(); }
-    void Clear()        { Window = NULL; ID = FocusScopeId = 0; InFlags = 0; DistBox = DistCenter = DistAxial = FLT_MAX; }
+    void Clear()        { Window = NULL; ID = FocusScopeId = 0; InFlags = 0; DistBox = DistCenter = DistAxial = FLT_MAX; HasSelectionData = false; }
 };
 
 //-----------------------------------------------------------------------------
@@ -1420,7 +1427,20 @@ struct ImGuiOldColumns
 //-----------------------------------------------------------------------------
 
 #ifdef IMGUI_HAS_MULTI_SELECT
-// <this is filled in 'range_select' branch>
+
+struct IMGUI_API ImGuiMultiSelectState
+{
+    ImGuiID                 FocusScopeId;           // Same as CurrentWindow->DC.FocusScopeIdCurrent (unless another selection scope was pushed manually)
+    ImGuiID                 BackupFocusScopeId;
+    ImGuiMultiSelectData    In;                     // The In requests are set and returned by BeginMultiSelect()
+    ImGuiMultiSelectData    Out;                    // The Out requests are finalized and returned by EndMultiSelect()
+    bool                    InRangeDstPassedBy;     // (Internal) set by the the item that match NavJustMovedToId when InRequestRangeSetNav is set.
+    bool                    InRequestSetRangeNav;   // (Internal) set by BeginMultiSelect() when using Shift+Navigation. Because scrolling may be affected we can't afford a frame of lag with Shift+Navigation.
+
+    ImGuiMultiSelectState() { Clear(); }
+    void Clear()            { FocusScopeId = BackupFocusScopeId = 0; In.Clear(); Out.Clear(); InRangeDstPassedBy = InRequestSetRangeNav = false; }
+};
+
 #endif // #ifdef IMGUI_HAS_MULTI_SELECT
 
 //-----------------------------------------------------------------------------
@@ -1689,6 +1709,7 @@ struct ImGuiContext
     ImGuiID                 NavJustMovedToId;                   // Just navigated to this id (result of a successfully MoveRequest).
     ImGuiID                 NavJustMovedToFocusScopeId;         // Just navigated to this focus scope id (result of a successfully MoveRequest).
     ImGuiModFlags           NavJustMovedToKeyMods;
+    bool                    NavJustMovedToHasSelectionData;     // " (FIXME-NAV: We should maybe just store ImGuiNavMoveResult)
     ImGuiID                 NavNextActivateId;                  // Set by ActivateItem(), queued until next frame.
     ImGuiActivateFlags      NavNextActivateFlags;
     ImGuiInputSource        NavInputSource;                     // Keyboard or Gamepad mode? THIS WILL ONLY BE None or NavGamepad or NavKeyboard.
@@ -1732,6 +1753,12 @@ struct ImGuiContext
     bool                    NavWindowingToggleLayer;
     ImVec2                  NavWindowingAccumDeltaPos;
     ImVec2                  NavWindowingAccumDeltaSize;
+
+    // Range-Select/Multi-Select
+    ImGuiWindow*            MultiSelectEnabledWindow;           // FIXME-MULTISELECT: We currently don't support recursing/stacking multi-select
+    ImGuiMultiSelectFlags   MultiSelectFlags;
+    ImGuiMultiSelectState   MultiSelectState;
+    ImGuiModFlags           MultiSelectKeyMods;
 
     // Render
     float                   DimBgRatio;                         // 0.0..1.0 animation when fading in a dimming background (for modal window and CTRL+TAB list)
@@ -1909,6 +1936,7 @@ struct ImGuiContext
         NavJustMovedToId = NavJustMovedToFocusScopeId = NavNextActivateId = 0;
         NavActivateFlags = NavNextActivateFlags = ImGuiActivateFlags_None;
         NavJustMovedToKeyMods = ImGuiModFlags_None;
+        NavJustMovedToHasSelectionData = false;
         NavInputSource = ImGuiInputSource_None;
         NavLayer = ImGuiNavLayer_Main;
         NavIdIsAlive = false;
@@ -1933,6 +1961,10 @@ struct ImGuiContext
         NavWindowingTarget = NavWindowingTargetAnim = NavWindowingListWindow = NULL;
         NavWindowingTimer = NavWindowingHighlightAlpha = 0.0f;
         NavWindowingToggleLayer = false;
+
+        MultiSelectEnabledWindow = NULL;
+        MultiSelectFlags = ImGuiMultiSelectFlags_None;
+        MultiSelectKeyMods = ImGuiModFlags_None;
 
         DimBgRatio = 0.0f;
         MouseCursor = ImGuiMouseCursor_Arrow;
@@ -2702,7 +2734,7 @@ namespace ImGui
     IMGUI_API ImGuiKeyData* GetKeyData(ImGuiKey key);
     IMGUI_API void          GetKeyChordName(ImGuiModFlags mods, ImGuiKey key, char* out_buf, int out_buf_size);
     IMGUI_API void          SetItemUsingMouseWheel();
-    IMGUI_API void          SetActiveIdUsingNavAndKeys();
+    IMGUI_API void          SetActiveIdUsingAllKeyboardKeys();
     inline bool             IsActiveIdUsingNavDir(ImGuiDir dir)                         { ImGuiContext& g = *GImGui; return (g.ActiveIdUsingNavDirMask & (1 << dir)) != 0; }
     inline bool             IsActiveIdUsingKey(ImGuiKey key)                            { ImGuiContext& g = *GImGui; return g.ActiveIdUsingKeyInputMask[key]; }
     inline void             SetActiveIdUsingKey(ImGuiKey key)                           { ImGuiContext& g = *GImGui; g.ActiveIdUsingKeyInputMask.SetBit(key); }
@@ -2712,8 +2744,8 @@ namespace ImGui
     IMGUI_API ImVec2        GetKeyVector2d(ImGuiKey key_left, ImGuiKey key_right, ImGuiKey key_up, ImGuiKey key_down);
     IMGUI_API float         GetNavTweakPressedAmount(ImGuiAxis axis);
     IMGUI_API int           CalcTypematicRepeatAmount(float t0, float t1, float repeat_delay, float repeat_rate);
-    IMGUI_API void          GetTypematicRepeatRate(ImGuiInputReadFlags flags, float* repeat_delay, float* repeat_rate);
-    IMGUI_API bool          IsKeyPressedEx(ImGuiKey key, ImGuiInputReadFlags flags = 0);
+    IMGUI_API void          GetTypematicRepeatRate(ImGuiInputFlags flags, float* repeat_delay, float* repeat_rate);
+    IMGUI_API bool          IsKeyPressedEx(ImGuiKey key, ImGuiInputFlags flags = 0);
 #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
     inline bool             IsKeyPressedMap(ImGuiKey key, bool repeat = true)           { IM_ASSERT(IsNamedKey(key)); return IsKeyPressed(key, repeat); } // [removed in 1.87]
 #endif
@@ -2723,6 +2755,10 @@ namespace ImGui
     IMGUI_API bool          BeginDragDropTargetCustom(const ImRect& bb, ImGuiID id);
     IMGUI_API void          ClearDragDrop();
     IMGUI_API bool          IsDragDropPayloadBeingAccepted();
+
+    // New Multi-Selection/Range-Selection API (FIXME-WIP)
+    IMGUI_API void          MultiSelectItemHeader(ImGuiID id, bool* p_selected);
+    IMGUI_API void          MultiSelectItemFooter(ImGuiID id, bool* p_selected, bool* p_pressed);
 
     // Internal Columns API (this is not exposed because we will encourage transitioning to the Tables API)
     IMGUI_API void          SetWindowClipRectBeforeSetChannel(ImGuiWindow* window, const ImRect& clip_rect);
@@ -2833,7 +2869,7 @@ namespace ImGui
     IMGUI_API bool          ArrowButtonEx(const char* str_id, ImGuiDir dir, ImVec2 size_arg, ImGuiButtonFlags flags = 0);
     IMGUI_API void          Scrollbar(ImGuiAxis axis);
     IMGUI_API bool          ScrollbarEx(const ImRect& bb, ImGuiID id, ImGuiAxis axis, ImS64* p_scroll_v, ImS64 avail_v, ImS64 contents_v, ImDrawFlags flags);
-    IMGUI_API bool          ImageButtonEx(ImGuiID id, ImTextureID texture_id, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec2& padding, const ImVec4& bg_col, const ImVec4& tint_col);
+    IMGUI_API bool          ImageButtonEx(ImGuiID id, ImTextureID texture_id, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col);
     IMGUI_API ImRect        GetWindowScrollbarRect(ImGuiWindow* window, ImGuiAxis axis);
     IMGUI_API ImGuiID       GetWindowScrollbarID(ImGuiWindow* window, ImGuiAxis axis);
     IMGUI_API ImGuiID       GetWindowResizeCornerID(ImGuiWindow* window, int n); // 0..3: corners

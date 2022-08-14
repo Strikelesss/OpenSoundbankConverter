@@ -204,30 +204,47 @@ void E4BViewer::Render()
 				{
 					if(ImGui::Button("Convert To E4B"))
 					{
-						constexpr BankConverter converter;
-						if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+						++m_banksInProgress;
+
+						m_threadPool.queueFunc([&]
 						{
-							OutputDebugStringA("Successfully converted to E4B! \n");
-						}
+							constexpr BankConverter converter;
+							if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+							{
+								OutputDebugStringA("Successfully converted to E4B! \n");
+							}
+
+							--m_banksInProgress;
+						});
 					}
 				}
 				else
 				{
 					if(ImGui::Button("Convert To SF2"))
 					{
-						constexpr BankConverter converter;
-						if(converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+						++m_banksInProgress;
+
+						m_threadPool.queueFunc([&]
 						{
-							OutputDebugStringA("Successfully converted to SF2! \n");
-						}
+							constexpr BankConverter converter;
+							if (converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_isChickenTranslatorFile)))
+							{
+								OutputDebugStringA("Successfully converted to SF2! \n");
+							}
+
+							--m_banksInProgress;
+						});
 					}
 				}
 
 				ImGui::SameLine();
 				ImGui::Checkbox("Flip Pan", &m_flipPan);
 
-				ImGui::SameLine();
-				ImGui::Checkbox("Is Chicken Translator Bank", &m_isChickenTranslatorFile);
+				if(m_currentBankType == EBankType::SF2)
+				{
+					ImGui::SameLine();
+					ImGui::Checkbox("Is Chicken Translator Bank", &m_isChickenTranslatorFile);
+				}
 
                 ImGui::EndPopup();
 			}
@@ -312,11 +329,7 @@ void E4BViewer::Render()
 					size_t index(0);
 					for (const auto& filter : m_filterExtensions)
 					{
-						if (ImGui::Selectable(filter.c_str()))
-						{
-							m_selectedFilter = index;
-						}
-
+						if (ImGui::Selectable(filter.c_str())) { m_selectedFilter = index; }
 						++index;
 					}
 
@@ -351,6 +364,91 @@ void E4BViewer::Render()
 				ImGui::EndPopup();
 			}
 		}
+
+		ImGui::Text("Banks In Progress: %d", m_banksInProgress.load());
+
+		if(ImGui::Button("Convert all E4Bs to SF2"))
+		{
+			ImGui::OpenPopup("##ConvertAllE4BToSF2Options");
+		}
+
+		if (ImGui::BeginPopupModal("##ConvertAllE4BToSF2Options", nullptr, ImGuiWindowFlags_NoResize))
+		{
+			ImGui::Checkbox("Flip Pan", &m_flipPan);
+
+			if(ImGui::Button("Convert"))
+			{
+				BROWSEINFO browseInfo{};
+				browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+
+				ConverterOptions options(m_flipPan, false, true);
+
+				LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
+				if (pidl != nullptr)
+				{
+					std::array<TCHAR, MAX_PATH> path{};
+					SHGetPathFromIDList(pidl, path.data());
+
+					IMalloc* imalloc = nullptr;
+					if (SUCCEEDED(SHGetMalloc(&imalloc)))
+					{
+						imalloc->Free(pidl);
+						imalloc->Release();
+					}
+
+					options.m_ignoreFileNameSettingSaveFolder = std::filesystem::path(path.data());
+				}
+
+				for(const auto& file : m_bankFiles)
+				{
+					if(exists(file))
+					{
+						const auto ext(file.extension().string());
+						if (strCI(ext, ".E4B"))
+						{
+							++m_banksInProgress;
+
+							m_threadPool.queueFunc([&, options]
+							{
+								E4Result tempResult;
+
+								BinaryReader reader;
+								reader.readFile(file);
+
+								if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+								{
+									constexpr BankConverter converter;
+									if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+									{
+										OutputDebugStringA("Successfully converted to SF2! \n");
+									}
+								}
+
+								--m_banksInProgress;
+							});
+						}
+					}
+				}
+
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+
+		// TODO: converting all sf2 to e4b
+		/*
+		if(ImGui::Button("Convert all SF2s to E4B"))
+		{
+			for(const auto& file : m_bankFiles)
+			{
+				if(exists(file))
+				{
+					
+				}
+			}
+		}
+		*/
 
 		ImGui::End();
 	}
