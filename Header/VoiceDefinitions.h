@@ -19,24 +19,8 @@ namespace VoiceDefinitions
 	[[nodiscard]] uint8_t GetByteFromSecAttack(double sec);
 	[[nodiscard]] uint8_t GetByteFromSecRelease(double sec);
 
-	[[nodiscard]] constexpr float GetBottomSectionPercent(const uint8_t value)
-	{
-		return static_cast<float>(value) * 100.f / 127.f;
-	}
-
-	[[nodiscard]] constexpr int8_t ConvertPercentToByteF(const float value, const bool inverted = false)
-	{
-		if(inverted) { return static_cast<int8_t>(value * 127.f / 100.f - 128.f); }
-		return static_cast<int8_t>(value * 127.f / 100.f);
-	}
-
-	[[nodiscard]] constexpr int8_t ConvertPercentToByteD(const double value)
-	{
-		return static_cast<int8_t>(value * 127. / 100.);
-	}
-
-	[[nodiscard]] constexpr float ConvertByteToPercentF(const int8_t b)
-	{
-		return static_cast<float>(b) / 127.f * 100.f;
-	}
+	[[nodiscard]] float GetBottomSectionPercent(uint8_t value);
+	[[nodiscard]] int8_t ConvertPercentToByteF(float value, bool inverted = false);
+	[[nodiscard]] int8_t ConvertPercentToByteD(double value);
+	[[nodiscard]] float ConvertByteToPercentF(int8_t b);
 }

@@ -164,7 +164,7 @@ struct E4Voice final
 	[[nodiscard]] double GetFineTune() const;
 	[[nodiscard]] int8_t GetCoarseTune() const { return m_coarseTune; }
 	[[nodiscard]] float GetFilterQ() const;
-	[[nodiscard]] double GetKeyDelay() const { return static_cast<double>(_byteswap_ushort(m_keyDelay)) / 1000.; }
+	[[nodiscard]] double GetKeyDelay() const;
 	[[nodiscard]] std::string_view GetFilterType() const;
 	[[nodiscard]] const E4Envelope& GetAmpEnv() const { return m_ampEnv; }
 	[[nodiscard]] const E4Envelope& GetFilterEnv() const { return m_filterEnv; }

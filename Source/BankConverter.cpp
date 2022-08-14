@@ -520,7 +520,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																			const auto lfo1delay(static_cast<double>(region.delayModLFO));
 																			const auto ampEnv(region.ampenv);
-																			const auto keyDelay(static_cast<double>(ampEnv.delay));
+
+																			// Round up 3 decimal places
+																			const auto keyDelay(std::ceil(static_cast<double>(ampEnv.delay) * 1000.) / 1000.);
+
 																			const auto ampAttack(static_cast<double>(ampEnv.attack));
 																			const auto ampRelease(static_cast<double>(ampEnv.release));
 
