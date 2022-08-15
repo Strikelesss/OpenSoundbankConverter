@@ -10,6 +10,9 @@ namespace VoiceDefinitions
 	constexpr float convert_cB_to_dB(const float cb) { return cb / 10.f; }
 	int8_t convert_dB_to_cB(float db);
 
+	double centsToHertz(int16_t cents);
+	int16_t hertzToCents(double hz);
+
 	[[nodiscard]] std::string GetMIDINoteFromKey(uint32_t key);
 	[[nodiscard]] std::string_view GetFilterTypeFromByte(uint8_t b);
 	[[nodiscard]] uint16_t ConvertByteToFilterFrequency(uint8_t b);
@@ -17,6 +20,12 @@ namespace VoiceDefinitions
 	[[nodiscard]] int8_t ConvertFineTuneToByte(double fineTune);
 	[[nodiscard]] double ConvertByteToFineTune(int8_t b);
 	[[nodiscard]] float ConvertByteToFilterQ(uint8_t b);
+
+	[[nodiscard]] double GetLFORateFromByte(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromLFORate(double rate);
+
+	[[nodiscard]] double GetLFODelayFromByte(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromLFODelay(double delay);
 
 	[[nodiscard]] double GetTimeFromCurveAttack(uint8_t b);
 	[[nodiscard]] uint8_t GetByteFromSecAttack(double sec);

@@ -3,11 +3,24 @@
 #include "Header/BinaryWriter.h"
 #include <cmath>
 
+E4LFO::E4LFO(const double rate, const uint8_t shape, const double delay, const bool keySync) : m_rate(VoiceDefinitions::GetByteFromLFORate(rate)),
+	m_shape(shape), m_delay(VoiceDefinitions::GetByteFromLFODelay(delay)), m_keySync(!keySync) {}
+
 bool E4LFO::write(BinaryWriter& writer)
 {
 	constexpr std::array<int8_t, 3> redundant{};
 	return writer.writeType(&m_rate) && writer.writeType(&m_shape) && writer.writeType(&m_delay) && writer.writeType(&m_variation)
 		&& writer.writeType(&m_keySync) && writer.writeType(redundant.data(), sizeof(int8_t) * redundant.size());
+}
+
+double E4LFO::GetRate() const
+{
+	return VoiceDefinitions::GetLFORateFromByte(m_rate);
+}
+
+double E4LFO::GetDelay() const
+{
+	return VoiceDefinitions::GetLFODelayFromByte(m_delay);
 }
 
 float E4Voice::GetChorusWidth() const

@@ -104,11 +104,6 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto ampHoldSec(SF2Converter::secToTimecent(ampEnv.GetDecay1Sec()));
 			if (ampHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldVolEnv, ampHoldSec)); }
 
-			if(sampleIndex == 7)
-			{
-				std::printf("");
-			}
-
 			// Sustain Level is expressed in dB for vol env, and is also opposite because of SF2
 			const auto ampSustainLevel(ampEnv.GetDecay2Level());
 			if(ampSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, static_cast<int16_t>((-(ampSustainLevel / 100.f * 144.f) + 144.f) * 10.f))); }
@@ -153,14 +148,11 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// LFO
 
-			// TODO: correct all these LFO values
+			const auto lfo1Freq(VoiceDefinitions::hertzToCents(voice.GetLFO1().GetRate()));
+			if (lfo1Freq != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFreqModLFO, lfo1Freq)); }
 
-			//constexpr auto test((127 + (127-29)) * 0.08);
-			const auto lfo1Freq(voice.GetLFO1().GetRate());
-			if (lfo1Freq != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFreqModLFO, lfo1Freq)); }
-
-			const auto lfo1Delay(voice.GetLFO1().GetDelay());
-			if (lfo1Delay != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModLFO, lfo1Delay)); }
+			const auto lfo1Delay(SF2Converter::secToTimecent(voice.GetLFO1().GetDelay()));
+			if (lfo1Delay != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModLFO, lfo1Delay)); }
 
 			if(options.m_useConverterSpecificData)
 			{
@@ -606,7 +598,6 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			constexpr auto FILTER_FREQUENCY_MAX_HZ(12000.f);
 																			const auto filterEnvPosPercent(std::roundf(filterEnvPos * 100.f / FILTER_FREQUENCY_MAX_HZ));
 
-																			const auto lfo1delay(static_cast<double>(region.delayModLFO));
 																			const auto& ampEnv(region.ampenv);
 
 																			// Round up 3 decimal places
@@ -627,16 +618,18 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																			float chorusAmount(region.chorusEffectsSend / 10.f);
 																			auto chorusWidth(static_cast<float>(region.unused5));
+																			const auto LFO1Freq(VoiceDefinitions::centsToHertz(static_cast<int16_t>(region.freqModLFO)));
+																			const auto LFO1Delay(static_cast<double>(region.delayModLFO));
 
 																			E4LFO lfo1;
 																			if(options.m_useConverterSpecificData)
 																			{
-																				lfo1 = E4LFO(static_cast<uint8_t>(region.freqModLFO), static_cast<uint8_t>(region.unused3), lfo1delay, region.unused4);
+																				lfo1 = E4LFO(LFO1Freq, static_cast<uint8_t>(region.unused3), LFO1Delay, region.unused4);
 																				chorusWidth = static_cast<float>(region.unused5);
 																			}
 																			else
 																			{
-																				lfo1 = E4LFO(static_cast<uint8_t>(region.freqModLFO), 0ui8, 0., false);
+																				lfo1 = E4LFO(LFO1Freq, 0ui8, LFO1Delay, false);
 																			}
 
 																			E4Voice voice(chorusWidth, chorusAmount, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, { region.lokey, region.hikey },

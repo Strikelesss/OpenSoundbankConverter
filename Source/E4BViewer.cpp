@@ -77,13 +77,6 @@ void E4BViewer::Render()
 			ImGui::SetNextWindowSize(ImVec2(windowSize.x / 1.25f, windowSize.y / 1.25f));
 			if(ImGui::BeginPopupModal(m_openedBank.string().c_str(), &m_isBankOpened, ImGuiWindowFlags_NoResize))
 			{
-				/*
-				if(ImGui::InputScalar("Startup Preset # (255 = NO PRESET BOUND)", ImGuiDataType_U32, &m_currentResult.m_currentPreset))
-				{
-					// TODO: change current preset (either write a new file, or save the last 'end' position and copy, then modify)
-				}
-				*/
-
 				ImGui::Text("Startup Preset #: %u (255 = NO PRESET BOUND)", m_currentResult.GetCurrentPreset());
 
 				if (ImGui::TreeNode("Presets"))

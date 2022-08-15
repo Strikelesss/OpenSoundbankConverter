@@ -112,12 +112,11 @@ struct E4LFO final
 {
 	E4LFO() = default;
 
-	// TODO: convert delay to uint8_t
-	explicit E4LFO(const uint8_t rate, const uint8_t shape, const double delay, const bool keySync) : m_rate(rate), m_shape(shape), m_delay(static_cast<uint8_t>(delay)), m_keySync(!keySync) {}
+	explicit E4LFO(double rate, uint8_t shape, double delay, bool keySync);
 
 	[[nodiscard]] bool write(BinaryWriter& writer);
-	[[nodiscard]] uint8_t GetRate() const { return m_rate; }
-	[[nodiscard]] uint8_t GetDelay() const { return m_delay; }
+	[[nodiscard]] double GetRate() const;
+	[[nodiscard]] double GetDelay() const;
 	[[nodiscard]] uint8_t GetShape() const { return m_shape; }
 	[[nodiscard]] bool IsKeySync() const { return !m_keySync; }
 private:
