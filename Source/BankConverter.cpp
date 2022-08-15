@@ -86,9 +86,12 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			// Envelope
+			// TODO: plot points from E4B onto an ADSR envelope and grab the time, since the time is inaccurate below (a binary value of 126 could be 2.1 sec, when it normally is say 80 sec)
 
 			/*
 			 * Amp Env
+			 * NOTE: for Delay we use the one provided in 'Key' but in reality it should be Attack1Sec
+			 * Generally Attack1Sec is only used for Filter Env, so that is used there
 			 */
 
 			const auto& ampEnv(voice.GetAmpEnv());
@@ -98,8 +101,13 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto ampAttackSec(SF2Converter::secToTimecent(ampEnv.GetAttack2Sec()));
 			if (ampAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackVolEnv, ampAttackSec)); }
 
-			const auto ampHoldSec(SF2Converter::secToTimecent(ampEnv.GetAttack1Sec()));
+			const auto ampHoldSec(SF2Converter::secToTimecent(ampEnv.GetDecay1Sec()));
 			if (ampHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldVolEnv, ampHoldSec)); }
+
+			if(sampleIndex == 7)
+			{
+				std::printf("");
+			}
 
 			// Sustain Level is expressed in dB for vol env, and is also opposite because of SF2
 			const auto ampSustainLevel(ampEnv.GetDecay2Level());
@@ -119,7 +127,10 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto filterAttackSec(SF2Converter::secToTimecent(filterEnv.GetAttack2Sec()));
 			if (filterAttackSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kAttackModEnv, filterAttackSec)); }
 
-			const auto filterHoldSec(SF2Converter::secToTimecent(filterEnv.GetAttack1Sec()));
+			const auto filterDelaySec(SF2Converter::secToTimecent(filterEnv.GetAttack1Sec()));
+			if (filterDelaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayModEnv, filterDelaySec)); }
+
+			const auto filterHoldSec(SF2Converter::secToTimecent(filterEnv.GetDecay1Sec()));
 			if (filterHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldModEnv, filterHoldSec)); }
 
 			// Opposite because of SF2
@@ -287,6 +298,28 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
 			}
 
+			float cordAmtPercent14(0.f);
+			if (voice.GetAmountFromCord(MOD_WHEEL, FILTER_FREQ, cordAmtPercent14))
+			{
+				// Mod Wheel -> Filter Freq
+				const auto modWheel(sf2cute::SFModulator(sf2cute::SFMidiController::kModulationDepth, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(modWheel, sf2cute::SFGenerator::kInitialFilterFc, static_cast<int16_t>(cordAmtPercent14),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
+			float cordAmtPercent15(0.f);
+			if (voice.GetAmountFromCord(PRESSURE, AMP_ENV_ATTACK, cordAmtPercent15))
+			{
+				// Pressure -> Amp Env Attack
+				const auto pressure(sf2cute::SFModulator(sf2cute::SFGeneralController::kChannelPressure, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(pressure, sf2cute::SFGenerator::kAttackVolEnv, static_cast<int16_t>(cordAmtPercent15),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
 			// Amplifier / Oscillator
 
 			const auto pan(options.m_flipPan ? -voice.GetPan() : voice.GetPan());
@@ -341,6 +374,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			{
 				std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
 				sf2.Write(ofs);
+				return true;
 			}
 		}
 		else
@@ -351,10 +385,9 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 				auto sf2Path(path.append(std::filesystem::path(convertedName + ".sf2").wstring()));
 				std::ofstream ofs(sf2Path, std::ios::binary);
 				sf2.Write(ofs);
+				return true;
 			}
 		}
-
-		return true;
 	}
 	catch (const std::fstream::failure& e) 
 	{
@@ -366,6 +399,8 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 		std::cerr << e.what() << std::endl;
 		return false;
 	}
+
+	return false;
 }
 
 bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options) const
@@ -698,6 +733,19 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																								}
 																							}
 																						}
+																						else if(srcOper.general_controller() == sf2cute::SFGeneralController::kChannelPressure)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator::kAttackVolEnv)
+																								{
+																									if(srcOper.polarity() == sf2cute::SFControllerPolarity::kUnipolar)
+																									{
+																										voice.ReplaceOrAddCord(PRESSURE, AMP_ENV_ATTACK, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									}
+																								}
+																							}
+																						}
 																					}
 																					else if (srcOper.controller_palette() == sf2cute::SFControllerPalette::kMidiController)
 																					{
@@ -708,6 +756,19 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																								if(destOper == sf2cute::SFGenerator::kInitialAttenuation)
 																								{
 																									voice.ReplaceOrAddCord(MIDI_A, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								}
+																							}
+																						}
+																						else if (srcOper.midi_controller() == sf2cute::SFMidiController::kModulationDepth)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if(destOper == sf2cute::SFGenerator::kInitialFilterFc)
+																								{
+																									if(srcOper.polarity() == sf2cute::SFControllerPolarity::kUnipolar)
+																									{
+																										voice.ReplaceOrAddCord(MOD_WHEEL, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									}
 																								}
 																							}
 																						}
