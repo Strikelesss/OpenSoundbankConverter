@@ -93,19 +93,19 @@ private:
 	 */
 
 	uint8_t m_attack1Sec = 0ui8;
-	int8_t m_attack1Level = 0ui8;
+	int8_t m_attack1Level = 0i8;
 	uint8_t m_attack2Sec = 0ui8;
-	int8_t m_attack2Level = 127ui8;
+	int8_t m_attack2Level = 127i8;
 
 	uint8_t m_decay1Sec = 0ui8;
-	int8_t m_decay1Level = 127ui8;
+	int8_t m_decay1Level = 127i8;
 	uint8_t m_decay2Sec = 0ui8;
-	int8_t m_decay2Level = 127ui8;
+	int8_t m_decay2Level = 127i8;
 
 	uint8_t m_release1Sec = 0ui8;
-	int8_t m_release1Level = 0ui8;
+	int8_t m_release1Level = 0i8;
 	uint8_t m_release2Sec = 0ui8;
-	int8_t m_release2Level = 0ui8;
+	int8_t m_release2Level = 0i8;
 };
 
 struct E4LFO final

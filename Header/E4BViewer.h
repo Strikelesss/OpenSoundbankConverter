@@ -9,8 +9,7 @@
 
 enum struct EBankType
 {
-	SF2,
-	EOS
+	SF2, E4B
 };
 
 namespace E4BViewer
@@ -27,7 +26,6 @@ namespace E4BViewer
 
 	[[nodiscard]] bool CreateResources();
 	void Render();
-	void RefreshFiles();
 
 	LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -50,13 +48,10 @@ namespace E4BViewer
 	// UI Specific
 
 	inline E4Result m_currentResult;
-	inline size_t m_selectedFilter = SIZE_MAX;
-	inline std::array<char, 5> m_currentAddedExtension{};
 	inline std::vector<std::filesystem::path> m_bankFiles{};
-	inline std::vector<std::string> m_filterExtensions{".E4B", ".SF2"};
-	inline std::filesystem::path m_openedBank;
-	inline std::filesystem::path m_currentSearchPath;
-	inline bool m_isBankOpened = false, m_isFilterOpened = false, m_flipPan = false, m_useConverterSpecificData = true, m_isChickenTranslatorFile = false;
+	inline std::string m_conversionType;
+	inline bool m_flipPan = false, m_useConverterSpecificData = true, m_isChickenTranslatorFile = false;
 	inline EBankType m_currentBankType;
+	inline bool m_queueClear = false;
 	inline std::atomic_uint32_t m_banksInProgress = 0u;
 }

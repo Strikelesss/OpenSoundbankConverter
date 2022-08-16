@@ -9,10 +9,13 @@ struct BinaryReader final
 	template<typename T>
 	void readType(T* data, const size_t& customSize = 0)
 	{
-		const auto size(customSize == 0 ? sizeof(T) : customSize);
-		std::memcpy(reinterpret_cast<char*>(data), m_readData, size);
-		m_readData += size;
-		m_readSize += size;
+		if (m_readData != nullptr)
+		{
+			const auto size(customSize == 0 ? sizeof(T) : customSize);
+			std::memcpy(reinterpret_cast<char*>(data), m_readData, size);
+			m_readData += size;
+			m_readSize += size;
+		}
 	}
 
 	template<typename T>

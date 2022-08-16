@@ -3,9 +3,7 @@
 #include "backends/imgui_impl_win32.h"
 #include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
-#include "Header/BinaryWriter.h"
 #include "Header/E4BFunctions.h"
-#include "Header/VoiceDefinitions.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
 
@@ -70,178 +68,7 @@ void E4BViewer::Render()
 	ImGui::SetNextWindowSize(windowSize);
 	if(ImGui::Begin("##main", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar))
 	{
-		if(m_isBankOpened && exists(m_openedBank))
-		{
-			ImGui::OpenPopup(m_openedBank.string().c_str());
-
-			ImGui::SetNextWindowSize(ImVec2(windowSize.x / 1.25f, windowSize.y / 1.25f));
-			if(ImGui::BeginPopupModal(m_openedBank.string().c_str(), &m_isBankOpened, ImGuiWindowFlags_NoResize))
-			{
-				ImGui::Text("Startup Preset #: %u (255 = NO PRESET BOUND)", m_currentResult.GetCurrentPreset());
-
-				if (ImGui::TreeNode("Presets"))
-				{
-					int32_t presetIndex(0u);
-					for(auto& preset : m_currentResult.GetPresets())
-					{
-						ImGui::PushID(presetIndex);
-						if (ImGui::TreeNode(preset.GetName().data()))
-						{
-							int32_t voiceIndex(1u);
-							for(const auto& voice : preset.GetVoices())
-							{
-								ImGui::PushID(voiceIndex);
-								if (ImGui::TreeNode(std::string("Voice #" + std::to_string(voiceIndex)).c_str()))
-								{
-									const auto& zoneRange(voice.GetZoneRange());
-									const auto& velRange(voice.GetVelocityRange());
-									ImGui::Text("Original Key: %s", VoiceDefinitions::GetMIDINoteFromKey(voice.GetOriginalKey()).c_str());
-									ImGui::Text("Zone Range: %s-%s", VoiceDefinitions::GetMIDINoteFromKey(zoneRange.first).c_str(), VoiceDefinitions::GetMIDINoteFromKey(zoneRange.second).c_str());
-									ImGui::Text("Velocity Range: %u-%u", velRange.first, velRange.second);
-									ImGui::Text("Filter Type: %s", voice.GetFilterType().data());
-									ImGui::Text("Filter Frequency: %d", voice.GetFilterFrequency());
-									ImGui::Text("Pan: %d", voice.GetPan());
-									ImGui::Text("Volume: %d", voice.GetVolume());
-									ImGui::Text("Fine Tune: %f", voice.GetFineTune());
-
-									ImGui::Text("Release Env: %f", voice.GetAmpEnv().GetRelease1Sec());
-
-									ImGui::TreePop();
-								}
-
-								ImGui::PopID();
-								++voiceIndex;
-							}
-
-							ImGui::TreePop();
-						}
-
-						ImGui::PopID();
-						++presetIndex;
-					}
-
-					ImGui::TreePop();
-				}
-
-				if (ImGui::TreeNode("Samples"))
-				{
-					int32_t sampleIndex(0u);
-					for(const auto& sample : m_currentResult.GetSamples())
-					{
-						ImGui::PushID(sampleIndex);
-						if (ImGui::TreeNode(sample.GetName().c_str()))
-						{
-							ImGui::Text("Sample Rate: %u", sample.GetSampleRate());
-							ImGui::Text("Loop Start: %u", sample.GetLoopStart());
-							ImGui::Text("Loop End: %u", sample.GetLoopEnd());
-							ImGui::Text("Loop: %d", sample.IsLooping());
-							ImGui::Text("Release: %d", sample.IsReleasing());
-							ImGui::Text("Sample Size: %zd", sample.GetData().size());
-
-							ImGui::TreePop();
-						}
-
-						ImGui::PopID();
-						++sampleIndex;
-					}
-
-					ImGui::TreePop();
-				}
-
-				if (ImGui::TreeNode("Sequences"))
-				{
-					int32_t seqIndex(0u);
-					for(const auto& seq : m_currentResult.GetSequences())
-					{
-						ImGui::PushID(seqIndex);
-
-						if(ImGui::TreeNode(seq.GetName().c_str()))
-						{
-							if (ImGui::Button("Extract Sequence"))
-							{
-								auto seqPathTemp(seq.GetName());
-								seqPathTemp.resize(MAX_PATH);
-
-								OPENFILENAMEA ofn{};
-								ofn.lStructSize = sizeof(ofn);
-								ofn.hwndOwner = nullptr;
-								ofn.lpstrFilter = ".mid";
-								ofn.lpstrFile = seqPathTemp.data();
-								ofn.nMaxFile = MAX_PATH;
-								ofn.Flags = OFN_EXPLORER;
-								ofn.lpstrDefExt = "mid";
-
-								if (GetSaveFileNameA(&ofn))
-								{
-									std::filesystem::path seqPath(seqPathTemp);
-									BinaryWriter writer(seqPath);
-
-									const auto& seqData(seq.GetMIDISeqData());
-									if(writer.writeType(seqData.data(), seqData.size())) { if(writer.finishWriting()) { OutputDebugStringA("Successfully extracted sequence! \n"); } }
-								}
-							}
-
-							ImGui::TreePop();
-						}
-
-						ImGui::PopID();
-						++seqIndex;
-					}
-
-					ImGui::TreePop();
-				}
-
-				ImGui::Dummy(ImVec2(0.f, ImGui::GetWindowSize().y - 115.f));
-
-				if(m_currentBankType == EBankType::SF2)
-				{
-					if(ImGui::Button("Convert To E4B"))
-					{
-						++m_banksInProgress;
-
-						m_threadPool.queueFunc([&]
-						{
-							constexpr BankConverter converter;
-							if(converter.ConvertSF2ToE4B(m_openedBank, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile)))
-							{
-								OutputDebugStringA("Successfully converted to E4B! \n");
-							}
-
-							--m_banksInProgress;
-						});
-					}
-				}
-				else
-				{
-					if(ImGui::Button("Convert To SF2"))
-					{
-						++m_banksInProgress;
-
-						m_threadPool.queueFunc([&]
-						{
-							constexpr BankConverter converter;
-							if (converter.ConvertE4BToSF2(m_currentResult, m_openedBank.filename().replace_extension("").string(), ConverterOptions(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile)))
-							{
-								OutputDebugStringA("Successfully converted to SF2! \n");
-							}
-
-							--m_banksInProgress;
-						});
-					}
-				}
-
-				ImGui::SameLine();
-				ImGui::Checkbox("Flip Pan", &m_flipPan);
-
-				if(m_currentBankType == EBankType::SF2)
-				{
-					ImGui::SameLine();
-					ImGui::Checkbox("Is Chicken Translator Bank", &m_isChickenTranslatorFile);
-				}
-
-                ImGui::EndPopup();
-			}
-		}
+		ImGui::BeginDisabled(m_banksInProgress.load() > 0);
 
 		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 		{
@@ -251,30 +78,9 @@ void E4BViewer::Render()
 				{
 					if(ImGui::Selectable(file.string().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
 					{
-						if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+						if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 						{
-							m_openedBank = file;
-
-							BinaryReader reader;
-							reader.readFile(file);
-
-							m_currentResult.Clear();
-
-							const auto ext(m_openedBank.extension().string());
-							if (strCI(ext, ".SF2"))
-							{
-								m_currentBankType = EBankType::SF2;
-								m_isBankOpened = true;
-							}
-							else
-							{
-								if (strCI(ext, ".E4B"))
-								{
-									m_currentBankType = EBankType::EOS;
-									if (E4BFunctions::ProcessE4BFile(reader, m_currentResult)) { m_isBankOpened = true; }
-								}
-							}
-
+							// TODO: open popup to remove
 							break;
 						}
 					}
@@ -284,99 +90,125 @@ void E4BViewer::Render()
 			ImGui::EndListBox();
 		}
 
-		if(ImGui::Button("Refresh Files")) { RefreshFiles(); }
-		if(ImGui::Button("Change Path"))
+		if(ImGui::Button("Add Files"))
 		{
-			BROWSEINFO bInfo{};
-			bInfo.hwndOwner = m_hwnd;
-			bInfo.pidlRoot = nullptr;
-			bInfo.lpszTitle = _T("Select a folder");
-			bInfo.ulFlags = 0;
-			bInfo.lpfn = nullptr;
-			bInfo.lParam = 0;
-			bInfo.iImage = -1;
+			constexpr auto MAX_FILES(MAX_PATH * 100);
 
-			const LPITEMIDLIST lpItem(SHBrowseForFolder(&bInfo));
-			if (lpItem != nullptr)
+			OPENFILENAME ofn{};
+
+			std::vector<TCHAR> szFile{};
+			szFile.resize(MAX_FILES);
+
+			ofn.lStructSize = sizeof ofn;
+			ofn.hwndOwner = m_hwnd;
+			ofn.lpstrFile = szFile.data();
+			ofn.nMaxFile = MAX_FILES;
+			ofn.lpstrFilter = _T("Supported Files\0*.e4b;*.sf2");
+			ofn.nMaxFileTitle = 0;
+			ofn.lpstrInitialDir = nullptr;
+			ofn.Flags = OFN_ALLOWMULTISELECT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
+
+			if (GetOpenFileName(&ofn))
 			{
-				std::array<TCHAR, MAX_PATH> filename{};
-				SHGetPathFromIDList(lpItem, filename.data());
-				m_currentSearchPath = std::filesystem::path(filename.data());
-				RefreshFiles();
+				auto* str(ofn.lpstrFile);
+				if (str != nullptr)
+				{
+					if (*(str + wcslen(str) + 1) == 0)
+					{
+						std::filesystem::path path(str);
+						if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
+						{
+							if (!m_bankFiles.empty())
+							{
+								// Skip if extension is not the same
+								if (strCI(path.extension().string(), m_bankFiles[0].extension().string()))
+								{
+									m_bankFiles.emplace_back(std::move(path));
+								}
+							}
+							else
+							{
+								m_bankFiles.emplace_back(std::move(path));
+							}
+						}
+					}
+					else
+					{
+						const std::wstring_view dir(str);
+						str += dir.length() + 1;
+						while (*str)
+						{
+							const std::wstring_view filename(str);
+							str += filename.length() + 1;
+
+							std::filesystem::path path(dir);
+							path = path.append(filename);
+
+							if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
+							{
+								if (!m_bankFiles.empty())
+								{
+									// Skip if extension is not the same
+									if (!strCI(path.extension().string(), m_bankFiles[0].extension().string())) { continue; }
+								}
+
+								m_bankFiles.emplace_back(std::move(path));
+							}
+						}
+					}
+				}
 			}
 		}
 
-		if(ImGui::Button("Filter"))
+		ImGui::BeginDisabled(m_bankFiles.empty());
+
+		ImGui::SameLine();
+
+		if(ImGui::Button("Clear")) { m_conversionType.clear(); m_bankFiles.clear(); }
+
+		ImGui::SetNextItemWidth(ImGui::CalcTextSize(m_conversionType.c_str()).x + 100.f + ImGui::GetStyle().FramePadding.x * 2.f);
+
+		if(ImGui::BeginCombo("Conversion Format", m_conversionType.c_str()))
 		{
-			ImGui::OpenPopup("File Filter");
-			m_isFilterOpened = true;
+			if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".SF2")); }
+
+			if(ImGui::Selectable("SF2", strCI(m_conversionType, "SF2"))) { m_conversionType = "SF2"; }
+
+			if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
+
+			if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".E4B")); }
+
+			if(ImGui::Selectable("E4B", strCI(m_conversionType, "E4B"))) { m_conversionType = "E4B"; }
+
+			if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
+
+			ImGui::EndCombo();
 		}
 
-		if (m_isFilterOpened)
+		ImGui::EndDisabled();
+
+		ImGui::BeginDisabled(m_conversionType.empty());
+
+		ImGui::Checkbox("Flip Pan", &m_flipPan);
+
+		if(strCI(m_conversionType, "E4B"))
 		{
-			ImGui::SetNextWindowSize(ImVec2(windowSize.x / 1.25f, windowSize.y / 1.25f));
-			if (ImGui::BeginPopupModal("File Filter", &m_isFilterOpened, ImGuiWindowFlags_NoResize))
-			{
-				if (ImGui::BeginListBox("Filters"))
-				{
-					size_t index(0);
-					for (const auto& filter : m_filterExtensions)
-					{
-						if (ImGui::Selectable(filter.c_str())) { m_selectedFilter = index; }
-						++index;
-					}
-
-					ImGui::EndListBox();
-				}
-
-				ImGui::InputText("Filter Name", m_currentAddedExtension.data(), m_currentAddedExtension.size());
-
-				if(ImGui::Button("Add"))
-				{
-					if(std::ranges::find_if(m_filterExtensions, [](auto& extension){ return strCI(extension, m_currentAddedExtension.data()); }) 
-						== m_filterExtensions.end()) { m_filterExtensions.emplace_back(m_currentAddedExtension.data()); }
-
-					for (char& i : m_currentAddedExtension) { i = '\0'; }
-					RefreshFiles();
-				}
-
-				ImGui::BeginDisabled(m_selectedFilter >= m_filterExtensions.size());
-
-				if(ImGui::Button("Remove"))
-				{
-					if(m_selectedFilter < m_filterExtensions.size())
-					{
-						m_filterExtensions.erase(std::next(m_filterExtensions.begin(), static_cast<ptrdiff_t>(m_selectedFilter)));
-						m_selectedFilter = SIZE_MAX;
-						RefreshFiles();
-					}
-				}
-
-				ImGui::EndDisabled();
-
-				ImGui::EndPopup();
-			}
+			ImGui::Checkbox("Is Chicken Translator File", &m_isChickenTranslatorFile);
 		}
 
-		ImGui::Text("Banks In Progress: %d", m_banksInProgress.load());
+		ImGui::SameLine();
 
-		if(ImGui::Button("Convert all E4Bs to SF2"))
+		if(ImGui::Button("Convert"))
 		{
-			ImGui::OpenPopup("##ConvertAllE4BToSF2Options");
-		}
-
-		if (ImGui::BeginPopupModal("##ConvertAllE4BToSF2Options", nullptr, ImGuiWindowFlags_NoResize))
-		{
-			ImGui::Checkbox("Flip Pan", &m_flipPan);
-
-			if(ImGui::Button("Convert"))
+			if (!m_bankFiles.empty())
 			{
 				BROWSEINFO browseInfo{};
-				browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+				browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+				browseInfo.lpszTitle = _T("Select a folder to export to");
 
-				ConverterOptions options(m_flipPan, m_useConverterSpecificData, false, true);
+				ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile, true);
 
-				LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
+				const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
 				if (pidl != nullptr)
 				{
 					std::array<TCHAR, MAX_PATH> path{};
@@ -392,56 +224,76 @@ void E4BViewer::Render()
 					options.m_ignoreFileNameSettingSaveFolder = std::filesystem::path(path.data());
 				}
 
-				for(const auto& file : m_bankFiles)
+				for (const auto& file : m_bankFiles)
 				{
-					if(exists(file))
+					if (exists(file))
 					{
 						const auto ext(file.extension().string());
 						if (strCI(ext, ".E4B"))
 						{
-							++m_banksInProgress;
-
-							m_threadPool.queueFunc([&, options]
+							if (strCI(m_conversionType, "SF2"))
 							{
-								E4Result tempResult;
+								++m_banksInProgress;
 
-								BinaryReader reader;
-								reader.readFile(file);
+								m_threadPool.queueFunc([&, options]
+								{
+									E4Result tempResult;
 
-								if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+									BinaryReader reader;
+									reader.readFile(file);
+
+									if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+									{
+										constexpr BankConverter converter;
+										if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+										{
+											OutputDebugStringA("Successfully converted to SF2! \n");
+										}
+									}
+
+									--m_banksInProgress;
+								});
+							}
+						}
+						else if(strCI(ext, ".SF2"))
+						{
+							if (strCI(m_conversionType, "E4B"))
+							{
+								++m_banksInProgress;
+
+								m_threadPool.queueFunc([&, options]
 								{
 									constexpr BankConverter converter;
-									if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+									if (converter.ConvertSF2ToE4B(file, file.filename().replace_extension("").string(), options))
 									{
-										OutputDebugStringA("Successfully converted to SF2! \n");
+										OutputDebugStringA("Successfully converted to E4B! \n");
 									}
-								}
 
-								--m_banksInProgress;
-							});
+									--m_banksInProgress;
+								});
+							}
 						}
 					}
 				}
-
-				ImGui::CloseCurrentPopup();
 			}
 
-			ImGui::EndPopup();
+			m_queueClear = true;
 		}
 
-		// TODO: converting all sf2 to e4b
-		/*
-		if(ImGui::Button("Convert all SF2s to E4B"))
+		ImGui::Text("Banks In Progress: %d", m_banksInProgress.load());
+
+		ImGui::EndDisabled();
+
+		ImGui::EndDisabled();
+
+		if(m_queueClear && m_banksInProgress.load() == 0)
 		{
-			for(const auto& file : m_bankFiles)
-			{
-				if(exists(file))
-				{
-					
-				}
-			}
+			m_queueClear = false;
+			m_bankFiles.clear();
+			m_conversionType.clear();
+			m_flipPan = false;
+			m_isChickenTranslatorFile = false;
 		}
-		*/
 
 		ImGui::End();
 	}
@@ -452,27 +304,6 @@ void E4BViewer::Render()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	m_swapchain->Present(0u, 0u);
-}
-
-void E4BViewer::RefreshFiles()
-{
-	m_bankFiles.clear();
-	if (exists(m_currentSearchPath))
-	{
-		for (const auto& it : std::filesystem::recursive_directory_iterator(m_currentSearchPath))
-		{
-			if (it.exists() && it.is_regular_file())
-			{
-				const auto& path(it.path());
-				const auto ext(path.extension().string());
-
-				if(std::ranges::find_if(m_filterExtensions, [&](auto& extension) { return strCI(extension, ext); }) != m_filterExtensions.end())
-				{
-					m_bankFiles.emplace_back(path);
-				}
-			}
-		}
-	}
 }
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -488,34 +319,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         return 1;
     }
 
-	const auto currentPath(std::filesystem::current_path());
-	const auto saveLocation(std::filesystem::path(currentPath).append("save.txt"));
-	if(exists(saveLocation))
-	{
-		BinaryReader reader;
-		if(reader.readFile(saveLocation))
-		{
-			size_t pathLength(0);
-			reader.readType(&pathLength);
-
-			std::wstring path;
-			path.resize(pathLength);
-			reader.readType(path.data(), sizeof(wchar_t) * pathLength);
-
-			E4BViewer::m_currentSearchPath = path;
-		}
-		else
-		{
-			E4BViewer::m_currentSearchPath = currentPath;
-		}
-	}
-	else
-	{
-		E4BViewer::m_currentSearchPath = currentPath;
-	}
-
-	E4BViewer::RefreshFiles();
-
 	bool keepRunning(true);
     while (keepRunning)
     {
@@ -530,18 +333,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		if (!keepRunning) { break; }
         E4BViewer::Render();
     }
-
-	BinaryWriter writer(saveLocation);
-	const auto searchPath(E4BViewer::m_currentSearchPath.wstring());
-
-	size_t pathLength(searchPath.length());
-	if(writer.writeType(&pathLength))
-	{
-		if(writer.writeType(searchPath.c_str(), sizeof(wchar_t) * pathLength))
-		{
-			if(writer.finishWriting()) { OutputDebugStringA("Wrote save file \n"); }
-		}
-	}
 
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
