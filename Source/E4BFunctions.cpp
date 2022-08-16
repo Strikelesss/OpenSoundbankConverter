@@ -130,8 +130,8 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 				if(canLoop)
 				{
 					const auto& params(sample.GetParams());
-					loopStart = (params[5] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
-					loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
+					if(params[5] > TOTAL_SAMPLE_DATA_READ_SIZE) { loopStart = (params[5] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u; }
+					if(params[7] > TOTAL_SAMPLE_DATA_READ_SIZE) { loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u; }
 				}
 
 				outResult.MapSampleIndex(sample.GetIndex(), currentSampleIndex);
