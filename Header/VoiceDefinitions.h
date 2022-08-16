@@ -8,7 +8,7 @@ namespace VoiceDefinitions
 	constexpr double MIN_FREQUENCY_57 = 4.04305126783455015;
 
 	constexpr float convert_cB_to_dB(const float cb) { return cb / 10.f; }
-	int8_t convert_dB_to_cB(float db);
+	int16_t convert_dB_to_cB(float db);
 
 	double centsToHertz(int16_t cents);
 	int16_t hertzToCents(double hz);

@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
-int8_t VoiceDefinitions::convert_dB_to_cB(const float db)
+int16_t VoiceDefinitions::convert_dB_to_cB(const float db)
 {
-	return static_cast<int8_t>(std::roundf(db * 10.f));
+	return static_cast<int16_t>(std::roundf(db * 10.f));
 }
 
 double VoiceDefinitions::centsToHertz(const int16_t cents)
@@ -197,7 +197,8 @@ int8_t VoiceDefinitions::ConvertFineTuneToByte(const double fineTune)
 
 double VoiceDefinitions::ConvertByteToFineTune(const int8_t b)
 {
-	return (b - 64i8) * 1.5625 + 100.;
+	// Round up 2 decimal places
+	return std::ceil(((b - 64i8) * 1.5625 + 100.) * 100.) / 100.;
 }
 
 float VoiceDefinitions::ConvertByteToFilterQ(const uint8_t b)
@@ -269,7 +270,8 @@ uint8_t VoiceDefinitions::GetByteFromSecRelease(const double sec)
 
 float VoiceDefinitions::GetBottomSectionPercent(const uint8_t value)
 {
-	return std::roundf(static_cast<float>(value) * 100.f / 127.f);
+	// Round up 2 decimal places
+	return std::ceilf(static_cast<float>(value) * 100.f / 127.f * 100.f) / 100.f;
 }
 
 float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)

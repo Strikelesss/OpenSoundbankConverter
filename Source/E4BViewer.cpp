@@ -14,7 +14,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 bool E4BViewer::CreateResources()
 {
 	DXGI_SWAP_CHAIN_DESC sd;
-	ZeroMemory(&sd, sizeof(sd));
+	ZeroMemory(&sd, sizeof sd);
 	sd.BufferCount = 2;
 	sd.BufferDesc.Width = 0u;
 	sd.BufferDesc.Height = 0u;

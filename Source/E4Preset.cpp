@@ -182,9 +182,19 @@ bool E4Envelope::write(BinaryWriter& writer)
 		&& writer.writeType(&m_release1Sec) && writer.writeType(&m_release1Level) && writer.writeType(&m_release2Sec) && writer.writeType(&m_release2Level);
 }
 
-E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const float sustainLevel) :
+E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const double delaySec, const float sustainLevel) :
 	m_attack1Sec(VoiceDefinitions::GetByteFromSecAttack(holdSec)), m_attack2Sec(VoiceDefinitions::GetByteFromSecAttack(attackSec)), m_decay2Sec(VoiceDefinitions::GetByteFromSecAttack(decaySec)),
-	m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(releaseSec)) {}
+	m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(releaseSec))
+{
+	if(delaySec > 0.)
+	{
+		m_attack1Sec = VoiceDefinitions::GetByteFromSecAttack(delaySec);
+
+		// This is set to 100% to allow for the seconds to be set, otherwise it would be ignored.
+		// TODO: attempt to get level based on the time (see issue on GitHub)
+		m_attack1Level = VoiceDefinitions::ConvertPercentToByteF(100.f);
+	}
+}
 
 double E4VoiceEndData::GetFineTune() const
 {

@@ -32,8 +32,11 @@ namespace SF2Converter
 	constexpr auto BASE_CENT_VALUE = 6900i16;
 	constexpr auto SF2_FILTER_MIN_FREQ = 1500i16;
 	constexpr auto SF2_FILTER_MAX_FREQ = 13500i16;
+	constexpr auto MIN_MAX_LFO1_TO_VOLUME = 15.f;
+	constexpr auto MAX_FILTER_FREQ_HZ_CORDS(12000.f);
 
-	[[nodiscard]] int16_t FilterFrequencyToCents(uint16_t freq);
+	[[nodiscard]] int16_t filterFreqPercentToCents(float filterFreq);
+	[[nodiscard]] float centsToFilterFreqPercent(int16_t cents);
 	[[nodiscard]] int16_t secToTimecent(double sec);
 }
 
