@@ -85,7 +85,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			const auto originalKey(voice.GetOriginalKey());
-			if(originalKey != 53ui8)
+			if(originalKey != 0ui8)
 			{
 				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kOverridingRootKey, originalKey));
 			}
