@@ -30,8 +30,11 @@ namespace VoiceDefinitions
 	[[nodiscard]] double GetTimeFromCurveAttack(uint8_t b);
 	[[nodiscard]] uint8_t GetByteFromSecAttack(double sec);
 
-	[[nodiscard]] double GetTimeFromCurveDecay(uint8_t b);
-	[[nodiscard]] uint8_t GetByteFromSecDecay(double sec);
+	[[nodiscard]] double GetTimeFromCurveDecay1(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromSecDecay1(double sec);
+
+	[[nodiscard]] double GetTimeFromCurveDecay2(uint8_t b);
+	[[nodiscard]] uint8_t GetByteFromSecDecay2(double sec);
 
 	[[nodiscard]] double GetTimeFromCurveRelease(uint8_t b);
 	[[nodiscard]] uint8_t GetByteFromSecRelease(double sec);

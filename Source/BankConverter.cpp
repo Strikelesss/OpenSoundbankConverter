@@ -427,6 +427,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 			const tsf* sf2(tsf_load_filename(bank.string().c_str()));
 			if(sf2 != nullptr)
 			{
+				const bool canUseConverterSpecificData(options.m_useConverterSpecificData && !options.m_isChickenTranslatorFile);
+
 				if(writer.writeType(E4BVariables::EOS_FORM_TAG.data(), E4BVariables::EOS_FORM_TAG.length()))
 				{
 					const auto numPresets(sf2->presetNum);
@@ -590,7 +592,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																			int8_t volume(0i8);
 
-																			if(options.m_useConverterSpecificData)
+																			if(canUseConverterSpecificData)
 																			{
 																				// Multiply by the sign since SF2 does not support negative attenuation
 																				const auto attenuationSign(region.unused2);
@@ -627,7 +629,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto LFO1Delay(static_cast<double>(region.delayModLFO));
 
 																			E4LFO lfo1;
-																			if(options.m_useConverterSpecificData)
+																			if(canUseConverterSpecificData)
 																			{
 																				lfo1 = E4LFO(LFO1Freq, static_cast<uint8_t>(region.unused3), LFO1Delay, region.unused4);
 																				chorusWidth = static_cast<float>(region.unused5);
@@ -661,7 +663,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto modLfoToFilterFc(static_cast<int16_t>(region.modLfoToFilterFc));
 																			if(modLfoToFilterFc != 0i16) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, FILTER_FREQ, SF2Converter::centsToFilterFreqPercent(modLfoToFilterFc)); }
 
-																			if(options.m_useConverterSpecificData)
+																			if(canUseConverterSpecificData)
 																			{
 																				const auto LFO1ToAmpPan(static_cast<int8_t>(region.unused1));
 																				if(LFO1ToAmpPan != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(LFO1ToAmpPan)); }

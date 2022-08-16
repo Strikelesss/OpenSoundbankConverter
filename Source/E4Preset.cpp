@@ -182,17 +182,19 @@ bool E4Envelope::write(BinaryWriter& writer)
 		&& writer.writeType(&m_release1Sec) && writer.writeType(&m_release1Level) && writer.writeType(&m_release2Sec) && writer.writeType(&m_release2Level);
 }
 
-E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const double delaySec, const float sustainLevel) :
-	m_attack1Sec(VoiceDefinitions::GetByteFromSecAttack(holdSec)), m_attack2Sec(VoiceDefinitions::GetByteFromSecAttack(attackSec)), m_decay2Sec(VoiceDefinitions::GetByteFromSecAttack(decaySec)),
-	m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)), m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(releaseSec))
+E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const double delaySec, const float sustainLevel)
+	: m_attack2Sec(VoiceDefinitions::GetByteFromSecAttack(attackSec)), m_decay1Sec(VoiceDefinitions::GetByteFromSecDecay1(holdSec)),
+	m_decay2Sec(VoiceDefinitions::GetByteFromSecDecay2(decaySec)), m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)),
+	m_release1Sec(VoiceDefinitions::GetByteFromSecRelease(releaseSec))
 {
 	if(delaySec > 0.)
 	{
-		m_attack1Sec = VoiceDefinitions::GetByteFromSecAttack(delaySec);
+		m_attack1Sec = VoiceDefinitions::GetByteFromSecDecay1(delaySec);
 
-		// This is set to 100% to allow for the seconds to be set, otherwise it would be ignored.
-		// TODO: attempt to get level based on the time (see issue on GitHub)
-		m_attack1Level = VoiceDefinitions::ConvertPercentToByteF(100.f);
+		// This is set to 99.2% to allow for the seconds to be set, otherwise it would be ignored.
+		// It can also be 100%, but then Attack2 cannot be set.
+		// TODO: attempt to get level(s) based on the time (see issue on GitHub)
+		m_attack1Level = VoiceDefinitions::ConvertPercentToByteF(99.2f);
 	}
 }
 
@@ -225,13 +227,13 @@ double E4Envelope::GetAttack2Sec() const
 
 double E4Envelope::GetDecay1Sec() const
 {
-	if(m_decay1Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay(m_decay1Sec); }
+	if(m_decay1Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay1(m_decay1Sec); }
 	return 0.;
 }
 
 double E4Envelope::GetDecay2Sec() const
 {
-	if(m_decay2Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay(m_decay2Sec); }
+	if(m_decay2Sec > 0ui8) { return VoiceDefinitions::GetTimeFromCurveDecay2(m_decay2Sec); }
 	return 0.;
 }
 

@@ -248,12 +248,22 @@ uint8_t VoiceDefinitions::GetByteFromSecAttack(const double sec)
 	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.084 + 59.));
 }
 
-double VoiceDefinitions::GetTimeFromCurveDecay(const uint8_t b)
+double VoiceDefinitions::GetTimeFromCurveDecay1(const uint8_t b)
+{
+	return 1.3 * std::pow(2., 0.015 * static_cast<double>(b - 59ui8));
+}
+
+uint8_t VoiceDefinitions::GetByteFromSecDecay1(const double sec)
+{
+	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.015 + 59.));
+}
+
+double VoiceDefinitions::GetTimeFromCurveDecay2(const uint8_t b)
 {
 	return 1.3 * std::pow(2., 0.1 * static_cast<double>(b - 59ui8));
 }
 
-uint8_t VoiceDefinitions::GetByteFromSecDecay(const double sec)
+uint8_t VoiceDefinitions::GetByteFromSecDecay2(const double sec)
 {
 	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.1 + 59.));
 }
