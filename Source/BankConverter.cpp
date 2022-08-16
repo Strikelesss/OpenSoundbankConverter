@@ -844,25 +844,25 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 														lastSampleRight = lastSampleLeft - TOTAL_SAMPLE_DATA_READ_SIZE;
 													}
 
-													uint32_t loopStart(0u);
+													uint32_t loopStart(92u);
 													if (shdr.startLoop > shdr.start)
 													{
 														loopStart = (shdr.startLoop - shdr.start) * 2u + static_cast<uint32_t>(TOTAL_SAMPLE_DATA_READ_SIZE);
 													}
 
-													uint32_t loopEnd(0u);
+													uint32_t loopEnd(92u);
 													if (shdr.endLoop > shdr.start)
 													{
 														loopEnd = (shdr.endLoop - shdr.start) * 2u + static_cast<uint32_t>(TOTAL_SAMPLE_DATA_READ_SIZE);
 													}
 
-													uint32_t loopStart2(0u);
+													uint32_t loopStart2(92u);
 													if (loopStart > TOTAL_SAMPLE_DATA_READ_SIZE)
 													{
 														loopStart2 = loopStart - TOTAL_SAMPLE_DATA_READ_SIZE;
 													}
 
-													uint32_t loopEnd2(0u);
+													uint32_t loopEnd2(92u);
 													if (loopEnd > TOTAL_SAMPLE_DATA_READ_SIZE)
 													{
 														loopEnd2 = loopEnd - TOTAL_SAMPLE_DATA_READ_SIZE;
