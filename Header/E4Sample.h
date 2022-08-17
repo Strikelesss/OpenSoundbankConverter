@@ -17,7 +17,7 @@ struct E4Sample final
 	[[nodiscard]] uint16_t GetIndex() const { return _byteswap_ushort(m_sampleIndex); }
 private:
 	uint16_t m_padding = 0ui16;
-	uint16_t m_sampleIndex = 0ui16;
+	uint16_t m_sampleIndex = 0ui16; // requires byteswap
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
 	std::array<uint32_t, E4BVariables::NUM_SAMPLE_PARAMETERS> m_params{}; // contains loops etc
 	uint32_t m_sample_rate = 0u;

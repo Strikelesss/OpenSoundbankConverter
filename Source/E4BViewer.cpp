@@ -68,7 +68,7 @@ void E4BViewer::Render()
 	ImGui::SetNextWindowSize(windowSize);
 	if(ImGui::Begin("##main", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar))
 	{
-		ImGui::BeginDisabled(m_banksInProgress.load() > 0);
+		ImGui::BeginDisabled(m_banksInProgress.load() > 0u);
 
 		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 		{
@@ -94,18 +94,15 @@ void E4BViewer::Render()
 		{
 			constexpr auto MAX_FILES(MAX_PATH * 100);
 
-			OPENFILENAME ofn{};
-
 			std::vector<TCHAR> szFile{};
 			szFile.resize(MAX_FILES);
 
+			OPENFILENAME ofn{};
 			ofn.lStructSize = sizeof ofn;
 			ofn.hwndOwner = m_hwnd;
 			ofn.lpstrFile = szFile.data();
 			ofn.nMaxFile = MAX_FILES;
 			ofn.lpstrFilter = _T("Supported Files\0*.e4b;*.sf2");
-			ofn.nMaxFileTitle = 0;
-			ofn.lpstrInitialDir = nullptr;
 			ofn.Flags = OFN_ALLOWMULTISELECT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
 
 			if (GetOpenFileName(&ofn))

@@ -13,27 +13,30 @@ enum EEOSCordSource : uint8_t
 {
 	KEY_POLARITY_POS = 8ui8,
 	KEY_POLARITY_CENTER = 9ui8,
-	VELOCITY_POLARITY_POS = 10ui8,
-	VELOCITY_POLARITY_CENTER = 11ui8,
-	VELOCITY_POLARITY_LESS = 12ui8,
+	VEL_POLARITY_POS = 10ui8,
+	VEL_POLARITY_CENTER = 11ui8,
+	VEL_POLARITY_LESS = 12ui8,
 	PITCH_WHEEL = 16ui8,
 	MOD_WHEEL = 17ui8,
 	PRESSURE = 18ui8,
 	MIDI_A = 20ui8,
 	MIDI_B = 21ui8,
+	FOOTSWITCH_1 = 22ui8,
 	FILTER_ENV_POLARITY_POS = 80ui8,
 	LFO1_POLARITY_CENTER = 96ui8
 };
 
 enum EEOSCordDest : uint8_t
 {
+	KEY_SUSTAIN = 8ui8,
 	PITCH = 48ui8,
 	FILTER_FREQ = 56ui8,
 	FILTER_RES = 57ui8,
 	AMP_VOLUME = 64ui8,
 	AMP_PAN = 65ui8,
 	AMP_ENV_ATTACK = 73ui8,
-	FILTER_ENV_ATTACK = 81ui8
+	FILTER_ENV_ATTACK = 81ui8,
+	CORD_3_AMT = 170ui8
 };
 
 struct E4VoiceEndData final
@@ -54,7 +57,7 @@ private:
 	std::array<int8_t, 2> m_possibleRedundant1{};
 	int8_t m_highZone = 127i8;
 
-	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\0', static_cast<char>(127)};
+	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\0', 127i8};
 	uint8_t m_sampleIndex = 0ui8;
 	int8_t m_possibleRedundant3 = 0i8;
 	int8_t m_fineTune = 0i8;
@@ -210,7 +213,7 @@ private:
 	std::array<int8_t, 2> m_possibleRedundant3{};
 	uint8_t m_maxVelocity = 0ui8;
 
-	std::array<int8_t, 6> m_possibleRedundant4{'\0', '\0', '\0', static_cast<char>(127)};
+	std::array<int8_t, 6> m_possibleRedundant4{'\0', '\0', '\0', 127i8};
 	uint16_t m_keyDelay = 0ui16; // requires byteswap
 	std::array<int8_t, 3> m_possibleRedundant5{};
 	uint8_t m_sampleOffset = 0ui8; // percent
@@ -253,8 +256,8 @@ private:
 
 	std::array<int8_t, 22> m_possibleRedundant15{}; // 188
 
-	std::array<E4Cord, 24> m_cords{E4Cord(12ui8, 64ui8, 0ui8), E4Cord(16ui8, 48ui8, 1ui8), E4Cord(96ui8, 48ui8, 0ui8), E4Cord(17ui8, 170ui8, 1ui8),
-		E4Cord(12ui8, 56ui8, 0ui8), E4Cord(80ui8, 56ui8, 0ui8), E4Cord(8ui8, 56ui8, 0ui8), E4Cord(22ui8, 8ui8, 127ui8)}; // 284
+	std::array<E4Cord, 24> m_cords{E4Cord(VEL_POLARITY_LESS, AMP_VOLUME, 0ui8), E4Cord(PITCH_WHEEL, PITCH, 1ui8), E4Cord(LFO1_POLARITY_CENTER, PITCH, 0ui8), E4Cord(MOD_WHEEL, CORD_3_AMT, 1ui8),
+		E4Cord(VEL_POLARITY_LESS, FILTER_FREQ, 0ui8), E4Cord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, 0ui8), E4Cord(KEY_POLARITY_POS, FILTER_FREQ, 0ui8), E4Cord(FOOTSWITCH_1, KEY_SUSTAIN, 127ui8)}; // 284
 
 	std::array<int8_t, 4> m_padding{}; // 288
 };
@@ -272,8 +275,8 @@ struct E4Preset final
 
 private:
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
-	uint16_t m_presetDataSize = 0ui16;
-	uint16_t m_numVoices = 0ui16;
+	uint16_t m_presetDataSize = 0ui16; // requires byteswap
+	uint16_t m_numVoices = 0ui16; // requires byteswap
 
 	std::array<int16_t, 2> m_padding{};
 };
@@ -302,8 +305,8 @@ private:
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{'U', 'n', 't', 'i', 't', 'l', 'e', 'd', ' ', 'M', 'S', 'e', 't', 'u', 'p', ' '};
 	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\2'};
 	uint8_t m_currentPreset = 0ui8;
-	std::array<uint8_t, 28> m_possibleRedundant3{static_cast<uint8_t>(127), '\0', '\0', '\0', '\0', static_cast<uint8_t>(255),
-		'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', static_cast<uint8_t>(127)};
+	std::array<uint8_t, 28> m_possibleRedundant3{127ui8, '\0', '\0', '\0', '\0', 255ui8, '\0', '\0', '\0', '\0', '\0', '\0', '\0',
+		'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', 127ui8};
 };
 
 constexpr auto TOTAL_EMST_DATA_SIZE = 56ull;

@@ -66,7 +66,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			uint16_t sampleMode(0ui16);
 			if (e4Sample.IsLooping()) { sampleMode |= static_cast<uint16_t>(sf2cute::SampleMode::kLoopContinuously); }
-			if (e4Sample.IsReleasing()) { sampleMode |= 2; }
+			if (e4Sample.IsReleasing()) { sampleMode |= 2ui16; }
 
 			const auto& zoneRange(voice.GetZoneRange());
 			const auto& velRange(voice.GetVelocityRange());
@@ -239,7 +239,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			float cordAmtPercent8(0.f);
-			if (voice.GetAmountFromCord(VELOCITY_POLARITY_POS, FILTER_RES, cordAmtPercent8))
+			if (voice.GetAmountFromCord(VEL_POLARITY_POS, FILTER_RES, cordAmtPercent8))
 			{
 				// Velocity + -> 'Filter Resonance
 				const auto velPos(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnVelocity, sf2cute::SFControllerDirection::kIncrease,
@@ -253,7 +253,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 				sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
 
 			float cordAmtPercent9(0.f);
-			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, AMP_VOLUME, cordAmtPercent9))
+			if (voice.GetAmountFromCord(VEL_POLARITY_LESS, AMP_VOLUME, cordAmtPercent9))
 			{
 				// Velocity < -> Amp Volume
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(cordAmtPercent9),
@@ -261,7 +261,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			float cordAmtPercent10(0.f);
-			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, cordAmtPercent10))
+			if (voice.GetAmountFromCord(VEL_POLARITY_LESS, FILTER_ENV_ATTACK, cordAmtPercent10))
 			{
 				// Velocity < -> Filter Env Attack
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kAttackModEnv, static_cast<int16_t>(cordAmtPercent10),
@@ -269,7 +269,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			float cordAmtPercent11(0.f);
-			if (voice.GetAmountFromCord(VELOCITY_POLARITY_LESS, FILTER_FREQ, cordAmtPercent11))
+			if (voice.GetAmountFromCord(VEL_POLARITY_LESS, FILTER_FREQ, cordAmtPercent11))
 			{
 				// Velocity < -> Filter Freq
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(velLess, sf2cute::SFGenerator::kInitialFilterFc, SF2Converter::filterFreqPercentToCents(cordAmtPercent11), 
@@ -277,7 +277,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			}
 
 			float cordAmtPercent12(0.f);
-			if (voice.GetAmountFromCord(VELOCITY_POLARITY_CENTER, AMP_PAN, cordAmtPercent12))
+			if (voice.GetAmountFromCord(VEL_POLARITY_CENTER, AMP_PAN, cordAmtPercent12))
 			{
 				// Velocity ~ -> Amp Pan
 				const auto velCenter(sf2cute::SFModulator(sf2cute::SFGeneralController::kNoteOnVelocity, sf2cute::SFControllerDirection::kIncrease,
@@ -414,7 +414,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 			sf2PathTemp.resize(MAX_PATH);
 
 			OPENFILENAMEA ofn{};
-			ofn.lStructSize = sizeof(ofn);
+			ofn.lStructSize = sizeof ofn;
 			ofn.hwndOwner = nullptr;
 			ofn.lpstrFilter = ".E4B";
 			ofn.lpstrFile = sf2PathTemp.data();
@@ -427,7 +427,15 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 		}
 		else
 		{
-			sf2Path = bank.parent_path().append(sf2PathTemp + ".E4B");
+			auto path(options.m_ignoreFileNameSettingSaveFolder);
+			if(!path.empty() && exists(path))
+			{
+				sf2Path = path.append(sf2PathTemp + ".E4B");
+			}
+			else
+			{
+				return false;
+			}
 		}
 
 		BinaryWriter writer(sf2Path);
@@ -573,10 +581,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 														constexpr std::array<int8_t, 30> redundantPresetData1{};
 														if (writer.writeType(redundantPresetData1.data(), sizeof(int8_t) * redundantPresetData1.size()))
 														{
-															constexpr std::array<uint8_t, 8> redundantPresetData2{ 'R', '#', '\0', '~', static_cast<uint8_t>(255),
-																static_cast<uint8_t>(255), static_cast<uint8_t>(255), static_cast<uint8_t>(255) };
-
-															if (writer.writeType(redundantPresetData2.data(), sizeof(char) * redundantPresetData2.size()))
+															constexpr std::array<uint8_t, 8> redundantPresetData2{ 'R', '#', '\0', '~', 255ui8, 255ui8, 255ui8, 255ui8 };
+															if (writer.writeType(redundantPresetData2.data(), sizeof(uint8_t) * redundantPresetData2.size()))
 															{
 																constexpr std::array<int8_t, 24> redundantPresetData3{};
 																if (writer.writeType(redundantPresetData3.data(), sizeof(int8_t) * redundantPresetData3.size()))
@@ -705,13 +711,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																						{
 																							if (destOper == sf2cute::SFGenerator::kInitialFilterQ)
 																							{
-																								voice.ReplaceOrAddCord(VELOCITY_POLARITY_POS, FILTER_RES, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								voice.ReplaceOrAddCord(VEL_POLARITY_POS, FILTER_RES, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																							}
 																							else if (destOper == sf2cute::SFGenerator::kPan)
 																							{
 																								if (srcOper.polarity() == sf2cute::SFControllerPolarity::kBipolar)
 																								{
-																									voice.ReplaceOrAddCord(VELOCITY_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																									voice.ReplaceOrAddCord(VEL_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																								}
 																							}
 																						}
@@ -719,15 +725,15 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																						{
 																							if (destOper == sf2cute::SFGenerator::kInitialAttenuation)
 																							{
-																								voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								voice.ReplaceOrAddCord(VEL_POLARITY_LESS, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																							}
 																							else if (destOper == sf2cute::SFGenerator::kAttackModEnv)
 																							{
-																								voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_ENV_ATTACK, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+																								voice.ReplaceOrAddCord(VEL_POLARITY_LESS, FILTER_ENV_ATTACK, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																							}
 																							else if (destOper == sf2cute::SFGenerator::kInitialFilterFc)
 																							{
-																								voice.ReplaceOrAddCord(VELOCITY_POLARITY_LESS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(
+																								voice.ReplaceOrAddCord(VEL_POLARITY_LESS, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(
 																									SF2Converter::centsToFilterFreqPercent(mod.modAmount)));
 																							}
 																						}
