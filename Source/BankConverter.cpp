@@ -604,8 +604,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																		const auto pan(static_cast<int8_t>(options.m_flipPan ? -convertedPan : convertedPan));
 
-																		int8_t volume(0i8);
-
+																		auto volume(static_cast<int8_t>(region.attenuation));
 																		if (canUseConverterSpecificData)
 																		{
 																			// Multiply by the sign since SF2 does not support negative attenuation
@@ -891,9 +890,17 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 															uint32_t format(MONO_SAMPLE);
 
 															const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
-															if (mode == TSF_LOOPMODE_CONTINUOUS) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
-															else if (mode == TSF_LOOPMODE_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG; }
-															else if (mode == TSF_LOOPMODE_CONTINUOUS_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG | E4SampleVariables::SAMPLE_LOOP_FLAG; }
+															if(options.m_isChickenTranslatorFile)
+															{
+																if (mode == TSF_LOOPMODE_CONTINUOUS) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
+																format |= E4SampleVariables::SAMPLE_RELEASE_FLAG; // Enable release flag by default to remove pops
+															}
+															else
+															{
+																if (mode == TSF_LOOPMODE_CONTINUOUS) { format |= E4SampleVariables::SAMPLE_LOOP_FLAG; }
+																else if (mode == TSF_LOOPMODE_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG; }
+																else if (mode == TSF_LOOPMODE_CONTINUOUS_SUSTAIN) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG | E4SampleVariables::SAMPLE_LOOP_FLAG; }
+															}
 
 															if (writer.writeType(&format))
 															{
