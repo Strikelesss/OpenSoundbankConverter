@@ -5,20 +5,10 @@
 #include <filesystem>
 #include <vector>
 #include <wrl/client.h>
-#include "E4Preset.h"
-
-enum struct EBankType
-{
-	SF2, E4B
-};
 
 namespace E4BViewer
 {
-	inline bool strCIPred(const uint8_t a, const uint8_t b)
-	{
-		return std::tolower(a) == std::tolower(b);
-	}
-
+	inline bool strCIPred(const uint8_t a, const uint8_t b) { return std::tolower(a) == std::tolower(b); }
 	inline bool strCI(const std::string& a, const std::string& b)
 	{
 		return a.length() == b.length() && std::equal(b.begin(), b.end(), a.begin(), strCIPred);
@@ -47,11 +37,9 @@ namespace E4BViewer
 
 	// UI Specific
 
-	inline E4Result m_currentResult;
 	inline std::vector<std::filesystem::path> m_bankFiles{};
 	inline std::string m_conversionType;
 	inline bool m_flipPan = false, m_useConverterSpecificData = true, m_isChickenTranslatorFile = false;
-	inline EBankType m_currentBankType;
 	inline bool m_queueClear = false;
 	inline std::atomic_uint32_t m_banksInProgress = 0u;
 }

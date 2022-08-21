@@ -109,12 +109,11 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui;$(SolutionDir);$(SolutionDir)Dependencies\sf2cute\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -128,13 +127,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\ImGui;$(SolutionDir);$(SolutionDir)Dependencies\sf2cute\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -185,7 +183,9 @@
     <ClCompile Include="Source\BinaryWriter.cpp" />
     <ClCompile Include="Source\E4BFunctions.cpp" />
     <ClCompile Include="Source\E4BViewer.cpp" />
-    <ClCompile Include="Source\E4Preset.cpp" />
+    <ClCompile Include="Source\E4Data.cpp" />
+    <ClCompile Include="Source\E4Result.cpp" />
+    <ClCompile Include="Source\MathFunctions.cpp" />
     <ClCompile Include="Source\ThreadPool.cpp" />
     <ClCompile Include="Source\VoiceDefinitions.cpp" />
   </ItemGroup>
@@ -232,11 +232,13 @@
     <ClInclude Include="Header\BankConverter.h" />
     <ClInclude Include="Header\BinaryReader.h" />
     <ClInclude Include="Header\BinaryWriter.h" />
+    <ClInclude Include="Header\E4Result.h" />
     <ClInclude Include="Header\E4Sample.h" />
     <ClInclude Include="Header\E4BFunctions.h" />
     <ClInclude Include="Header\E4BViewer.h" />
     <ClInclude Include="Header\E4BVariables.h" />
-    <ClInclude Include="Header\E4Preset.h" />
+    <ClInclude Include="Header\E4Data.h" />
+    <ClInclude Include="Header\MathFunctions.h" />
     <ClInclude Include="Header\ThreadPool.h" />
     <ClInclude Include="Header\VoiceDefinitions.h" />
   </ItemGroup>

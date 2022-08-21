@@ -25,9 +25,6 @@ namespace E4BVariables
 	constexpr size_t EOS_E3_SAMPLE_REDUNDANT_OFFSET = EOS_CHUNK_NAME_OFFSET + EOS_E4_MAX_NAME_LEN + sizeof(uint32_t) * NUM_SAMPLE_PARAMETERS +
 		sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) * NUM_EXTRA_SAMPLE_PARAMETERS;
 
-	constexpr auto EOS_STEREO_SAMPLE = 0x00700001;
-	constexpr auto EOS_STEREO_SAMPLE_2 = 0x00700000;
-
 	constexpr std::array<std::string_view, 56> filterTypes =
 	{
 		"No Filter", "2 Pole Lowpass", "4 Pole Lowpass", "6 Pole Lowpass",

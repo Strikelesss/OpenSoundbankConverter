@@ -19,7 +19,6 @@ namespace VoiceDefinitions
 	[[nodiscard]] uint8_t ConvertFilterFrequencyToByte(uint16_t freq);
 	[[nodiscard]] int8_t ConvertFineTuneToByte(double fineTune);
 	[[nodiscard]] double ConvertByteToFineTune(int8_t b);
-	[[nodiscard]] float ConvertByteToFilterQ(uint8_t b);
 
 	[[nodiscard]] double GetLFORateFromByte(uint8_t b);
 	[[nodiscard]] uint8_t GetByteFromLFORate(double rate);

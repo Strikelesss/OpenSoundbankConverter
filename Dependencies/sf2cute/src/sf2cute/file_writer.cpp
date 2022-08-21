@@ -159,7 +159,7 @@ namespace sf2cute {
 	std::unique_ptr<RIFFChunkInterface> SoundFontWriter::MakeZSTRChunk(std::string name, std::string data) {
 		std::vector<char> zstr((data.size() + 1 + 1) & ~1);
 		std::ranges::copy(data, zstr.begin());
-		std::fill(std::next(zstr.begin(), data.size()), zstr.end(), 0);
+		std::fill(std::next(zstr.begin(), data.size()), zstr.end(), 0i8);
 		return std::make_unique<RIFFChunk>(std::move(name), std::move(zstr));
 	}
 

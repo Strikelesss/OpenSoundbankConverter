@@ -4,6 +4,7 @@
 #include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
 #include "Header/E4BFunctions.h"
+#include "Header/E4Result.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
 
@@ -303,7 +304,7 @@ void E4BViewer::Render()
 	m_swapchain->Present(0u, 0u);
 }
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 {
 	const WNDCLASSEX wc{ sizeof(WNDCLASSEX), CS_CLASSDC, E4BViewer::WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("test"), nullptr};
     RegisterClassEx(&wc);

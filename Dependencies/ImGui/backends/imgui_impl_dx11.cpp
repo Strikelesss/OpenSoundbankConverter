@@ -33,7 +33,6 @@
 #include "imgui_impl_dx11.h"
 
 // DirectX
-#include <stdio.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #ifdef _MSC_VER

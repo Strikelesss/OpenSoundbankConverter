@@ -1,13 +1,13 @@
 #include "Header/E4BFunctions.h"
 #include "Header/BinaryReader.h"
-#include "Header/E4Preset.h"
+#include "Header/E4Result.h"
 #include "Header/E4Sample.h"
 
 uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 {
 	const auto& format(sample.GetFormat());
-	if ((format & E4BVariables::EOS_STEREO_SAMPLE) == E4BVariables::EOS_STEREO_SAMPLE || 
-		(format & E4BVariables::EOS_STEREO_SAMPLE_2) == E4BVariables::EOS_STEREO_SAMPLE_2) { return 2u; }
+	if ((format & E4SampleVariables::EOS_STEREO_SAMPLE) == E4SampleVariables::EOS_STEREO_SAMPLE || 
+		(format & E4SampleVariables::EOS_STEREO_SAMPLE_2) == E4SampleVariables::EOS_STEREO_SAMPLE_2) { return 2u; }
 
 	return 1u;
 }

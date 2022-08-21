@@ -1,6 +1,6 @@
 #include "Header/VoiceDefinitions.h"
 #include "Header/E4BVariables.h"
-#include <algorithm>
+#include "Header/MathFunctions.h"
 #include <cmath>
 
 int16_t VoiceDefinitions::convert_dB_to_cB(const float db)
@@ -198,12 +198,7 @@ int8_t VoiceDefinitions::ConvertFineTuneToByte(const double fineTune)
 double VoiceDefinitions::ConvertByteToFineTune(const int8_t b)
 {
 	// Round up 2 decimal places
-	return std::ceil(((b - 64i8) * 1.5625 + 100.) * 100.) / 100.;
-}
-
-float VoiceDefinitions::ConvertByteToFilterQ(const uint8_t b)
-{
-	return GetBottomSectionPercent(b);
+	return std::ceil(((static_cast<double>(b) - 64.) * 1.5625 + 100.) * 100.) / 100.;
 }
 
 double VoiceDefinitions::GetLFORateFromByte(const uint8_t b)
@@ -286,7 +281,7 @@ float VoiceDefinitions::GetBottomSectionPercent(const uint8_t value)
 
 float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)
 {
-	return std::clamp(GetBottomSectionPercent(value + 128ui8), 0.f, 100.f);
+	return MathFunctions::clamp_f(GetBottomSectionPercent(value + 128ui8), 0.f, 100.f);
 }
 
 int8_t VoiceDefinitions::ConvertPercentToByteF(const float value)

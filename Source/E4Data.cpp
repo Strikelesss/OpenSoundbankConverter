@@ -1,7 +1,6 @@
-#include "Header/E4Preset.h"
+#include "Header/E4Data.h"
 #include "Header/VoiceDefinitions.h"
 #include "Header/BinaryWriter.h"
-#include <cmath>
 
 E4LFO::E4LFO(const double rate, const uint8_t shape, const double delay, const bool keySync) : m_rate(VoiceDefinitions::GetByteFromLFORate(rate)),
 	m_shape(shape), m_delay(VoiceDefinitions::GetByteFromLFODelay(delay)), m_keySync(!keySync) {}
@@ -45,7 +44,7 @@ double E4Voice::GetFineTune() const
 
 float E4Voice::GetFilterQ() const
 {
-	return VoiceDefinitions::ConvertByteToFilterQ(m_filterQ);
+	return VoiceDefinitions::GetBottomSectionPercent(m_filterQ);
 }
 
 double E4Voice::GetKeyDelay() const
@@ -125,24 +124,6 @@ bool E4EMSt::write(BinaryWriter& writer)
 	return writer.writeType(&emstLen) && writer.writeType(m_possibleRedundant1.data(), sizeof(int8_t) * m_possibleRedundant1.size())
 		&& writer.writeType(m_name.data(), sizeof(char) * m_name.size()) && writer.writeType(m_possibleRedundant2.data(), sizeof(int8_t) * m_possibleRedundant2.size())
 		&& writer.writeType(&m_currentPreset) && writer.writeType(m_possibleRedundant3.data(), sizeof(int8_t) * m_possibleRedundant3.size());
-}
-
-bool E4VoiceResult::GetAmountFromCord(const uint8_t src, const uint8_t dst, float& outAmount) const
-{
-	for(const auto& cord : m_cords)
-	{
-		if(cord.GetSource() == src && cord.GetDest() == dst)
-		{
-			const auto amount(cord.GetAmount());
-			if(amount != 0i8)
-			{
-				outAmount = std::roundf(VoiceDefinitions::ConvertByteToPercentF(cord.GetAmount()));
-				return true;
-			}
-		}
-	}
-
-	return false;
 }
 
 float E4Envelope::GetAttack1Level() const
