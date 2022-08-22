@@ -238,6 +238,7 @@
     <ClInclude Include="Header\E4BViewer.h" />
     <ClInclude Include="Header\E4BVariables.h" />
     <ClInclude Include="Header\E4Data.h" />
+    <ClInclude Include="Header\Logger.h" />
     <ClInclude Include="Header\MathFunctions.h" />
     <ClInclude Include="Header\ThreadPool.h" />
     <ClInclude Include="Header\VoiceDefinitions.h" />

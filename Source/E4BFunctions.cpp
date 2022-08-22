@@ -2,6 +2,7 @@
 #include "Header/BinaryReader.h"
 #include "Header/E4Result.h"
 #include "Header/E4Sample.h"
+#include "Header/Logger.h"
 
 uint32_t E4BFunctions::GetSampleChannels(const E4Sample& sample)
 {
@@ -38,7 +39,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 	uint32_t lastLoc(0u);
 	uint8_t currentSampleIndex(0ui8);
 
-	for(uint32_t i(0); i < numChunks; ++i)
+	for(uint32_t i(0u); i < numChunks; ++i)
 	{
 		reader.readType(tempChunkName.data(), E4BVariables::EOS_CHUNK_NAME_LEN);
 
@@ -103,7 +104,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()) == 0)
 			{
 				E4Sample sample;
-				reader.readTypeAtLocation(&sample, chunkLocationWithOffset - 4ull, SAMPLE_DATA_READ_SIZE);
+				reader.readTypeAtLocation(&sample, chunkLocationWithOffset - (sizeof(uint16_t) + sizeof(uint16_t)), SAMPLE_DATA_READ_SIZE);
 
 				const auto wavStart(chunkLocation + E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET);
 				//const auto numSamples((chunkLength - E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
@@ -171,4 +172,48 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 	}
 
 	return true;
+}
+
+bool E4BFunctions::IsAccountingForCords(const E4Result& result)
+{
+	bool isAccounting(true);
+	for(const auto& preset : result.GetPresets())
+	{
+		int voiceIndex(0);
+		for(const auto& voice : preset.GetVoices())
+		{
+			for(const auto& cord : voice.GetCords())
+			{
+				if(cord.GetSource() == LFO1_POLARITY_CENTER && cord.GetDest() == AMP_VOLUME) { continue; }
+				if(cord.GetSource() == LFO1_POLARITY_CENTER && cord.GetDest() == PITCH) { continue; }
+				if(cord.GetSource() == LFO1_POLARITY_CENTER && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == LFO1_POLARITY_CENTER && cord.GetDest() == AMP_PAN) { continue; }
+				if(cord.GetSource() == FILTER_ENV_POLARITY_POS && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == PITCH_WHEEL && cord.GetDest() == PITCH) { continue; }
+				if(cord.GetSource() == MIDI_A && cord.GetDest() == AMP_VOLUME) { continue; }
+				if(cord.GetSource() == VEL_POLARITY_POS && cord.GetDest() == FILTER_RES) { continue; }
+				if(cord.GetSource() == VEL_POLARITY_LESS && cord.GetDest() == AMP_VOLUME) { continue; }
+				if(cord.GetSource() == VEL_POLARITY_LESS && cord.GetDest() == FILTER_ENV_ATTACK) { continue; }
+				if(cord.GetSource() == VEL_POLARITY_LESS && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == VEL_POLARITY_CENTER && cord.GetDest() == AMP_PAN) { continue; }
+				if(cord.GetSource() == KEY_POLARITY_CENTER && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == PRESSURE && cord.GetDest() == AMP_ENV_ATTACK) { continue; }
+
+				// skipping these
+				if(cord.GetSource() == 0ui8 && cord.GetDest() == CORD_3_AMT) { continue; }
+				if(cord.GetSource() == 0ui8 && cord.GetDest() == PITCH) { continue; }
+				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == CORD_3_AMT) { continue; }
+				if(cord.GetSource() == FOOTSWITCH_1 && cord.GetDest() == KEY_SUSTAIN) { continue; }
+				if(cord.GetSource() == 0ui8 && cord.GetDest() == 0ui8) { continue; }
+
+				Logger::LogMessage("(preset: %s, voice: %d) Cord was not accounted: src: %d, dst: %d", preset.GetName().c_str(), voiceIndex, cord.GetSource(), cord.GetDest());
+				isAccounting = false;
+			}
+
+			++voiceIndex;
+		}
+	}
+
+	return isAccounting;
 }

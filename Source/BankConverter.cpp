@@ -5,6 +5,7 @@
 #include "Header/E4Result.h"
 #include "Header/BinaryReader.h"
 #include "Header/MathFunctions.h"
+#include "Header/Logger.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -29,7 +30,7 @@
 
 int16_t SF2Converter::filterFreqPercentToCents(const float filterFreq)
 {
-	if(filterFreq > MAX_FILTER_FREQ_HZ_CORDS || filterFreq < -MAX_FILTER_FREQ_HZ_CORDS) { OutputDebugStringA("Invalid filter frequency"); return 0i16; }
+	if(filterFreq > MAX_FILTER_FREQ_HZ_CORDS || filterFreq < -MAX_FILTER_FREQ_HZ_CORDS) { Logger::LogMessage("Invalid filter frequency"); return 0i16; }
 	return static_cast<int16_t>(MAX_FILTER_FREQ_HZ_CORDS * filterFreq / 100.f);
 }
 
@@ -522,13 +523,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 												{
 													const auto presetNum(static_cast<uint16_t>(i));
 													if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN)
-														&& writer.writeType(&redundant16))
-													{
-														OutputDebugStringA("wrote preset \n");
-													}
+														&& writer.writeType(&redundant16)) { continue; }
 												}
 											}
 										}
+
+										Logger::LogMessage("Failed to write preset chunk!");
+										return false;
 									}
 
 									uint16_t sampleIndex(0ui16);
@@ -549,15 +550,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 													{
 														const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
 														if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(),
-															E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundant16))
-														{
-															OutputDebugStringA("wrote sample \n");
-														}
+															E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundant16)) { ++sampleIndex; continue; }
 													}
 												}
 											}
 
-											++sampleIndex;
+											Logger::LogMessage("Failed to write sample chunk!");
+											return false;
 										}
 									}
 
@@ -817,11 +816,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																				}
 																			}
 
-																			if (voice.write(writer) && voiceEnd.write(writer))
-																			{
-																				OutputDebugStringA("wrote voice data \n");
-																			}
+																			if (voice.write(writer) && voiceEnd.write(writer)) { continue; }
+
+																			Logger::LogMessage("Failed to write voice data!");
+																			return false;
 																		}
+
+																		continue;
 																	}
 																}
 															}
@@ -830,6 +831,9 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 												}
 											}
 										}
+
+										Logger::LogMessage("Failed to write preset data!");
+										return false;
 									}
 
 									sampleIndex = 0ui16;
@@ -915,26 +919,25 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																	if (writer.writeType(params2.data(), sizeof(uint32_t) * params2.size()))
 																	{
 																		const std::vector sampleData(&sf2->samplesAsShort[shdr.start], &sf2->samplesAsShort[shdr.end]);
-																		if (writer.writeType(sampleData.data(), sizeof(uint16_t) * sampleData.size()))
-																		{
-																			OutputDebugStringA("wrote sample data \n");
-																		}
+																		if (writer.writeType(sampleData.data(), sizeof(uint16_t) * sampleData.size())) { ++sampleIndex; continue; }
 																	}
 																}
 															}
 														}
 													}
 												}
-
-												++sampleIndex;
 											}
+
+											Logger::LogMessage("Failed to write sample data!");
+											return false;
 										}
 									}
 
 									E4EMSt emst;
-									if (writer.writeType(E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) && emst.write(writer))
+									if (!writer.writeType(E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) || !emst.write(writer))
 									{
-										OutputDebugStringA("wrote emst data \n");
+										Logger::LogMessage("Failed to write EMST data!");
+										return false;
 									}
 								}
 							}

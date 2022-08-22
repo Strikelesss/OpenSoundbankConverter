@@ -5,6 +5,7 @@
 #include "Header/BinaryReader.h"
 #include "Header/E4BFunctions.h"
 #include "Header/E4Result.h"
+#include "Header/Logger.h"
 #include <ShlObj_core.h>
 #include <tchar.h>
 
@@ -69,227 +70,291 @@ void E4BViewer::Render()
 	ImGui::SetNextWindowSize(windowSize);
 	if(ImGui::Begin("##main", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar))
 	{
-		ImGui::BeginDisabled(m_threadPool.GetNumTasks() > 0);
-
-		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
+		if(ImGui::BeginTabBar("##maintabbar"))
 		{
-			for(const auto& file : m_bankFiles)
+			if(ImGui::BeginTabItem("Converter"))
 			{
-				if(exists(file))
+				ImGui::BeginDisabled(m_threadPool.GetNumTasks() > 0);
+
+				if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 				{
-					if(ImGui::Selectable(file.string().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
+					for(const auto& file : m_bankFiles)
 					{
-						if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+						if(exists(file))
 						{
-							// TODO: open popup to remove
-							break;
+							if(ImGui::Selectable(file.string().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
+							{
+								if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+								{
+									// TODO: open popup to remove
+									break;
+								}
+							}
 						}
 					}
+
+					ImGui::EndListBox();
 				}
-			}
 
-			ImGui::EndListBox();
-		}
+				ImGui::SameLine();
 
-		if(ImGui::Button("Add Files"))
-		{
-			constexpr auto MAX_FILES(MAX_PATH * 100);
+				ImGui::Text("Banks In Progress: %d", m_threadPool.GetNumTasks());
 
-			std::vector<TCHAR> szFile{};
-			szFile.resize(MAX_FILES);
-
-			OPENFILENAME ofn{};
-			ofn.lStructSize = sizeof ofn;
-			ofn.hwndOwner = m_hwnd;
-			ofn.lpstrFile = szFile.data();
-			ofn.nMaxFile = MAX_FILES;
-			ofn.lpstrFilter = _T("Supported Files\0*.e4b;*.sf2");
-			ofn.Flags = OFN_ALLOWMULTISELECT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
-
-			if (GetOpenFileName(&ofn))
-			{
-				auto* str(ofn.lpstrFile);
-				if (str != nullptr)
+				if(ImGui::Button("Add Files"))
 				{
-					if (*(str + wcslen(str) + 1) == 0)
+					constexpr auto MAX_FILES(MAX_PATH * 100);
+
+					std::vector<TCHAR> szFile{};
+					szFile.resize(MAX_FILES);
+
+					OPENFILENAME ofn{};
+					ofn.lStructSize = sizeof ofn;
+					ofn.hwndOwner = m_hwnd;
+					ofn.lpstrFile = szFile.data();
+					ofn.nMaxFile = MAX_FILES;
+					ofn.lpstrFilter = _T("Supported Files\0*.e4b;*.sf2");
+					ofn.Flags = OFN_ALLOWMULTISELECT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
+
+					if (GetOpenFileName(&ofn))
 					{
-						std::filesystem::path path(str);
-						if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
+						auto* str(ofn.lpstrFile);
+						if (str != nullptr)
 						{
-							if (!m_bankFiles.empty())
+							if (*(str + wcslen(str) + 1) == 0)
 							{
-								// Skip if extension is not the same
-								if (strCI(path.extension().string(), m_bankFiles[0].extension().string()))
+								std::filesystem::path path(str);
+								if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
 								{
-									m_bankFiles.emplace_back(std::move(path));
+									if (!m_bankFiles.empty())
+									{
+										// Skip if extension is not the same
+										if (strCI(path.extension().string(), m_bankFiles[0].extension().string()))
+										{
+											m_bankFiles.emplace_back(std::move(path));
+										}
+									}
+									else
+									{
+										m_bankFiles.emplace_back(std::move(path));
+									}
 								}
 							}
 							else
 							{
-								m_bankFiles.emplace_back(std::move(path));
-							}
-						}
-					}
-					else
-					{
-						const std::wstring_view dir(str);
-						str += dir.length() + 1;
-						while (*str)
-						{
-							const std::wstring_view filename(str);
-							str += filename.length() + 1;
-
-							std::filesystem::path path(dir);
-							path = path.append(filename);
-
-							if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
-							{
-								if (!m_bankFiles.empty())
+								const std::wstring_view dir(str);
+								str += dir.length() + 1;
+								while (*str)
 								{
-									// Skip if extension is not the same
-									if (!strCI(path.extension().string(), m_bankFiles[0].extension().string())) { continue; }
-								}
+									const std::wstring_view filename(str);
+									str += filename.length() + 1;
 
-								m_bankFiles.emplace_back(std::move(path));
-							}
-						}
-					}
-				}
-			}
-		}
+									std::filesystem::path path(dir);
+									path = path.append(filename);
 
-		ImGui::BeginDisabled(m_bankFiles.empty());
-
-		ImGui::SameLine();
-
-		if(ImGui::Button("Clear")) { m_conversionType.clear(); m_bankFiles.clear(); }
-
-		ImGui::SetNextItemWidth(ImGui::CalcTextSize(m_conversionType.c_str()).x + 100.f + ImGui::GetStyle().FramePadding.x * 2.f);
-
-		if(ImGui::BeginCombo("Conversion Format", m_conversionType.c_str()))
-		{
-			if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".SF2")); }
-
-			if(ImGui::Selectable("SF2", strCI(m_conversionType, "SF2"))) { m_conversionType = "SF2"; }
-
-			if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
-
-			if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".E4B")); }
-
-			if(ImGui::Selectable("E4B", strCI(m_conversionType, "E4B"))) { m_conversionType = "E4B"; }
-
-			if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
-
-			ImGui::EndCombo();
-		}
-
-		ImGui::EndDisabled();
-
-		ImGui::BeginDisabled(m_conversionType.empty());
-
-		ImGui::Checkbox("Flip Pan", &m_flipPan);
-
-		if(strCI(m_conversionType, "E4B"))
-		{
-			ImGui::Checkbox("Is Chicken Translator File", &m_isChickenTranslatorFile);
-		}
-
-		ImGui::SameLine();
-
-		if(ImGui::Button("Convert"))
-		{
-			if (!m_bankFiles.empty())
-			{
-				BROWSEINFO browseInfo{};
-				browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
-				browseInfo.lpszTitle = _T("Select a folder to export to");
-
-				ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile, true);
-
-				const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
-				if (pidl != nullptr)
-				{
-					std::array<TCHAR, MAX_PATH> path{};
-					SHGetPathFromIDList(pidl, path.data());
-
-					IMalloc* imalloc = nullptr;
-					if (SUCCEEDED(SHGetMalloc(&imalloc)))
-					{
-						imalloc->Free(pidl);
-						imalloc->Release();
-					}
-
-					options.m_ignoreFileNameSettingSaveFolder = std::filesystem::path(path.data());
-				}
-
-				for (const auto& file : m_bankFiles)
-				{
-					if (exists(file))
-					{
-						const auto ext(file.extension().string());
-						if (strCI(ext, ".E4B"))
-						{
-							if (strCI(m_conversionType, "SF2"))
-							{
-								m_threadPool.queueFunc([&, options]
-								{
-									E4Result tempResult;
-
-									BinaryReader reader;
-									reader.readFile(file);
-
-									if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+									if (std::ranges::find(m_bankFiles, path) == m_bankFiles.end())
 									{
-										constexpr BankConverter converter;
-										if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+										if (!m_bankFiles.empty())
 										{
-											OutputDebugStringA("Successfully converted to SF2! \n");
+											// Skip if extension is not the same
+											if (!strCI(path.extension().string(), m_bankFiles[0].extension().string())) { continue; }
 										}
+
+										m_bankFiles.emplace_back(std::move(path));
 									}
-								});
-							}
-						}
-						else if(strCI(ext, ".SF2"))
-						{
-							if (strCI(m_conversionType, "E4B"))
-							{
-								m_threadPool.queueFunc([&, options]
-								{
-									constexpr BankConverter converter;
-									if (converter.ConvertSF2ToE4B(file, file.filename().replace_extension("").string(), options))
-									{
-										OutputDebugStringA("Successfully converted to E4B! \n");
-									}
-								});
+								}
 							}
 						}
 					}
 				}
+
+				ImGui::BeginDisabled(m_bankFiles.empty());
+
+				ImGui::SameLine();
+
+				if(ImGui::Button("Clear")) { m_conversionType.clear(); m_bankFiles.clear(); }
+
+				ImGui::SetNextItemWidth(ImGui::CalcTextSize(m_conversionType.c_str()).x + 100.f + ImGui::GetStyle().FramePadding.x * 2.f);
+
+				if(ImGui::BeginCombo("Conversion Format", m_conversionType.c_str()))
+				{
+					if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".SF2")); }
+
+					if(ImGui::Selectable("SF2", strCI(m_conversionType, "SF2"))) { m_conversionType = "SF2"; }
+
+					if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
+
+					if(!m_bankFiles.empty()) { ImGui::BeginDisabled(strCI(m_bankFiles[0].extension().string(), ".E4B")); }
+
+					if(ImGui::Selectable("E4B", strCI(m_conversionType, "E4B"))) { m_conversionType = "E4B"; }
+
+					if(!m_bankFiles.empty()) { ImGui::EndDisabled(); }
+
+					ImGui::EndCombo();
+				}
+
+				ImGui::EndDisabled();
+
+				ImGui::BeginDisabled(m_conversionType.empty());
+
+				if (strCI(m_conversionType, "SF2"))
+				{
+					// TODO: remove
+					if (ImGui::Button("Verify Cords"))
+					{
+						for (const auto& file : m_bankFiles)
+						{
+							if (exists(file))
+							{
+								const auto ext(file.extension().string());
+								if (strCI(ext, ".E4B"))
+								{
+									if (strCI(m_conversionType, "SF2"))
+									{
+										m_threadPool.queueFunc([&]
+										{
+											E4Result tempResult;
+
+											BinaryReader reader;
+											reader.readFile(file);
+
+											if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+											{
+												E4BFunctions::IsAccountingForCords(tempResult);
+											}
+										});
+									}
+								}
+							}
+						}
+					}
+				}
+
+				ImGui::Checkbox("Flip Pan", &m_flipPan);
+
+				if(strCI(m_conversionType, "E4B"))
+				{
+					ImGui::SameLine();
+					ImGui::Checkbox("Is Chicken Translator File", &m_isChickenTranslatorFile);
+				}
+
+				ImGui::SameLine();
+
+				if(ImGui::Button("Convert"))
+				{
+					if (!m_bankFiles.empty())
+					{
+						BROWSEINFO browseInfo{};
+						browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+						browseInfo.lpszTitle = _T("Select a folder to export to");
+
+						ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile, true);
+
+						const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
+						if (pidl != nullptr)
+						{
+							std::array<TCHAR, MAX_PATH> path{};
+							SHGetPathFromIDList(pidl, path.data());
+
+							IMalloc* imalloc = nullptr;
+							if (SUCCEEDED(SHGetMalloc(&imalloc)))
+							{
+								imalloc->Free(pidl);
+								imalloc->Release();
+							}
+
+							options.m_ignoreFileNameSettingSaveFolder = std::filesystem::path(path.data());
+						}
+
+						for (const auto& file : m_bankFiles)
+						{
+							if (exists(file))
+							{
+								const auto ext(file.extension().string());
+								if (strCI(ext, ".E4B"))
+								{
+									if (strCI(m_conversionType, "SF2"))
+									{
+										m_threadPool.queueFunc([&, options]
+										{
+											E4Result tempResult;
+
+											BinaryReader reader;
+											reader.readFile(file);
+
+											if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+											{
+												constexpr BankConverter converter;
+												if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+												{
+													OutputDebugStringA("Successfully converted to SF2! \n");
+												}
+											}
+										});
+									}
+								}
+								else if(strCI(ext, ".SF2"))
+								{
+									if (strCI(m_conversionType, "E4B"))
+									{
+										m_threadPool.queueFunc([&, options]
+										{
+											constexpr BankConverter converter;
+											if (converter.ConvertSF2ToE4B(file, file.filename().replace_extension("").string(), options))
+											{
+												OutputDebugStringA("Successfully converted to E4B! \n");
+											}
+										});
+									}
+								}
+							}
+						}
+					}
+
+					m_queueClear = true;
+				}
+
+				ImGui::EndDisabled();
+
+				ImGui::EndDisabled();
+
+				if(m_queueClear && m_threadPool.GetNumTasks() == 0)
+				{
+					m_queueClear = false;
+					m_bankFiles.clear();
+					m_conversionType.clear();
+					m_flipPan = false;
+					m_isChickenTranslatorFile = false;
+				}
+
+				ImGui::EndTabItem();
 			}
 
-			m_queueClear = true;
-		}
+			if(ImGui::BeginTabItem("Console"))
+			{
+				if(ImGui::BeginListBox("##console", {-1.f, -1.f}))
+				{
+					for(const auto& msg : Logger::GetLogMessages()) 
+					{
+						ImGui::TextUnformatted(msg.c_str(), msg.data() + msg.length());
+					}
 
-		ImGui::Text("Banks In Progress: %d", m_threadPool.GetNumTasks());
+					// Auto scroll console
+					if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) { ImGui::SetScrollHereY(1.f); }
 
-		ImGui::EndDisabled();
+					ImGui::EndListBox();
+				}
 
-		ImGui::EndDisabled();
+				ImGui::EndTabItem();
+			}
 
-		if(m_queueClear && m_threadPool.GetNumTasks() == 0)
-		{
-			m_queueClear = false;
-			m_bankFiles.clear();
-			m_conversionType.clear();
-			m_flipPan = false;
-			m_isChickenTranslatorFile = false;
+			ImGui::EndTabBar();
 		}
 
 		ImGui::End();
 	}
 
 	ImGui::Render();
-	m_deviceContext->OMSetRenderTargets(1, m_rtv.GetAddressOf(), nullptr);
+	m_deviceContext->OMSetRenderTargets(1u, m_rtv.GetAddressOf(), nullptr);
 	m_deviceContext->ClearRenderTargetView(m_rtv.Get(), CLEAR_COLOR.data());
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
