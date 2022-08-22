@@ -69,7 +69,7 @@ void E4BViewer::Render()
 	ImGui::SetNextWindowSize(windowSize);
 	if(ImGui::Begin("##main", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar))
 	{
-		ImGui::BeginDisabled(m_banksInProgress.load() > 0u);
+		ImGui::BeginDisabled(m_threadPool.GetNumTasks() > 0);
 
 		if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 		{
@@ -231,8 +231,6 @@ void E4BViewer::Render()
 						{
 							if (strCI(m_conversionType, "SF2"))
 							{
-								++m_banksInProgress;
-
 								m_threadPool.queueFunc([&, options]
 								{
 									E4Result tempResult;
@@ -248,8 +246,6 @@ void E4BViewer::Render()
 											OutputDebugStringA("Successfully converted to SF2! \n");
 										}
 									}
-
-									--m_banksInProgress;
 								});
 							}
 						}
@@ -257,8 +253,6 @@ void E4BViewer::Render()
 						{
 							if (strCI(m_conversionType, "E4B"))
 							{
-								++m_banksInProgress;
-
 								m_threadPool.queueFunc([&, options]
 								{
 									constexpr BankConverter converter;
@@ -266,8 +260,6 @@ void E4BViewer::Render()
 									{
 										OutputDebugStringA("Successfully converted to E4B! \n");
 									}
-
-									--m_banksInProgress;
 								});
 							}
 						}
@@ -278,13 +270,13 @@ void E4BViewer::Render()
 			m_queueClear = true;
 		}
 
-		ImGui::Text("Banks In Progress: %d", m_banksInProgress.load());
+		ImGui::Text("Banks In Progress: %d", m_threadPool.GetNumTasks());
 
 		ImGui::EndDisabled();
 
 		ImGui::EndDisabled();
 
-		if(m_queueClear && m_banksInProgress.load() == 0)
+		if(m_queueClear && m_threadPool.GetNumTasks() == 0)
 		{
 			m_queueClear = false;
 			m_bankFiles.clear();

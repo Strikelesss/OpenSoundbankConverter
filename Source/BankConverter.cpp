@@ -4,6 +4,7 @@
 #include "Header/VoiceDefinitions.h"
 #include "Header/E4Result.h"
 #include "Header/BinaryReader.h"
+#include "Header/MathFunctions.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -76,17 +77,16 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto& zoneRange(voice.GetZoneRange());
 			const auto& velRange(voice.GetVelocityRange());
 
-			const auto voiceVolBefore(voice.GetVolume());
-			const auto voiceVolume(std::clamp(static_cast<int16_t>(std::abs(voiceVolBefore) * 10i16), 0i16, 144i16)); // Using abs on volume since SF2 does not support negative attenuation
-
 			sf2cute::SFInstrumentZone instrumentZone(sf2.samples()[sampleIndex], std::vector{
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.first, zoneRange.second)),
 				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second))
 			}, std::vector<sf2cute::SFModulatorItem>{});
 
-			if(voiceVolume != 0i16)
+			const auto voiceVolBefore(voice.GetVolume());
+			const auto voiceVolumeAbs(std::clamp(static_cast<int16_t>(std::abs(voiceVolBefore) * 10i16), 0i16, 144i16)); // Using abs on volume since SF2 does not support negative attenuation
+			if(voiceVolumeAbs != 0i16)
 			{
-				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, voiceVolume));
+				instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialAttenuation, voiceVolumeAbs));
 			}
 
 			const auto originalKey(voice.GetOriginalKey());
@@ -158,7 +158,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto filterFreqCents(VoiceDefinitions::hertzToCents(voice.GetFilterFrequency()));
 			if (filterFreqCents >= 1500i16 && filterFreqCents < 13500i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, filterFreqCents)); }
 
-			const auto filterQ(voice.GetFilterQ());
+			const auto filterQ(MathFunctions::round_f_places(voice.GetFilterQ(), 1u));
 			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
 
 			// LFO
@@ -623,12 +623,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 																			const auto fineTune(static_cast<double>(region.tune));
 																			const auto coarseTune(static_cast<int8_t>(region.transpose));
-																			const auto filterQ(std::roundf(static_cast<float>(region.initialFilterQ) / 10.f));
+																			const auto filterQ(static_cast<float>(region.initialFilterQ) / 10.f);
 
 																			const auto& ampEnv(region.ampenv);
-
-																			// Round up 3 decimal places
-																			const auto keyDelay(std::ceil(static_cast<double>(ampEnv.delay) * 1000.) / 1000.);
+																			const auto keyDelay(MathFunctions::round_f_places(ampEnv.delay, 3u));
 
 																			const auto ampAttack(static_cast<double>(ampEnv.attack));
 																			const auto ampRelease(static_cast<double>(ampEnv.release));

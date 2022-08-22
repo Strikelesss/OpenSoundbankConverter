@@ -152,7 +152,7 @@ struct E4Voice final
 {
 	E4Voice() = default;
 
-	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t coarseTune, int8_t pan, int8_t volume, double fineTune, double keyDelay,
+	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t coarseTune, int8_t pan, int8_t volume, double fineTune, float keyDelay,
 		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO lfo1);
 
 	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
@@ -222,7 +222,7 @@ private:
 	int8_t m_possibleRedundant6 = 0i8;
 	bool m_fixedPitch = false;
 	std::array<int8_t, 2> m_possibleRedundant7{};
-	uint8_t m_chorusWidth = 0ui8;
+	uint8_t m_chorusWidth = 128ui8;
 
 	int8_t m_chorusAmount = 128i8;
 	std::array<int8_t, 11> m_possibleRedundant8{};

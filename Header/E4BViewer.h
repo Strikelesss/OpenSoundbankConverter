@@ -3,7 +3,6 @@
 #include <array>
 #include <d3d11.h>
 #include <filesystem>
-#include <vector>
 #include <wrl/client.h>
 
 namespace E4BViewer
@@ -41,5 +40,4 @@ namespace E4BViewer
 	inline std::string m_conversionType;
 	inline bool m_flipPan = false, m_useConverterSpecificData = true, m_isChickenTranslatorFile = false;
 	inline bool m_queueClear = false;
-	inline std::atomic_uint32_t m_banksInProgress = 0u;
 }

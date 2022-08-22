@@ -9,32 +9,11 @@ struct ThreadPool final
 	ThreadPool(ThreadPool const&) = delete; ThreadPool& operator=(const ThreadPool&) = delete;
 	~ThreadPool() noexcept;
 
-	/*
-	\brief Initialize x threads
-	*/
 	void initialize(unsigned int numThreads);
-
-	/*
-	\brief Queue a task for a thread to take
-	*/
 	void queueFunc(std::function<void()>&& func);
-
-	/*
-	\brief Waits for all threads to finish tasks up
-	*/
 	void waitForAll() const noexcept;
-
-	/*
-	\brief Destroys all threads, generally never needs to be called finished
-		with the thread pool
-	*/
 	void destroyAll();
-
-	/*
-	\brief Resets all threads, generally never needs to be called unless
-		all threads are destroyed
-	*/
-	void resetAll(unsigned int numThreads = 0u);
+	int GetNumTasks() const { return m_tasksInProgress.load(); }
 private:
     std::condition_variable m_condition;
 	std::vector<std::thread> m_workers{};

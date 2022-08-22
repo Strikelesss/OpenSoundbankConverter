@@ -23,7 +23,7 @@ void ThreadPool::initialize(const unsigned int numThreads)
 				std::unique_lock uLock(m_queueMutex);
 				m_condition.wait(uLock, [this] { return !m_isEnabled || !m_tasks.empty(); });
 
-				if (!m_isEnabled && m_tasks.empty()) break;
+				if (!m_isEnabled && m_tasks.empty()) { break; }
 
 				const auto task(std::move(m_tasks.front()));
 				m_tasks.pop();
@@ -49,13 +49,7 @@ void ThreadPool::queueFunc(std::function<void()>&& func)
 
 void ThreadPool::waitForAll() const noexcept
 {
-	while(true)
-	{
-		if(m_tasks.empty() && m_tasksInProgress == 0)
-		{
-			break;
-		}
-	}
+	while(true) { if(m_tasks.empty() && m_tasksInProgress.load() == 0) { break; } }
 }
 
 void ThreadPool::destroyAll()
@@ -64,11 +58,4 @@ void ThreadPool::destroyAll()
 	m_condition.notify_all();
 	for(auto& thread : m_workers) { thread.join(); }
 	m_workers.clear();
-}
-
-void ThreadPool::resetAll(const unsigned int numThreads)
-{
-	m_workers.clear();
-	m_isEnabled = true;
-	initialize(numThreads == 0u ? m_prevNumThreads : numThreads);
 }
