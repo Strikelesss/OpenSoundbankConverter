@@ -409,6 +409,10 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 	return false;
 }
 
+// Most early Emulator samplers (ex. Emax II) had a maximum of 8MB for each bank
+// TODO: account for the 8MB maximum by adding multisample for voices that share the same data
+// without multisample: 302 + 302 = 604 bytes
+// with multisample: 328 bytes
 bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options) const
 {
 	if(exists(bank) && !bankName.empty())

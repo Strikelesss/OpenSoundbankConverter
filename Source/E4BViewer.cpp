@@ -274,7 +274,7 @@ void E4BViewer::Render()
 								{
 									if (strCI(m_conversionType, "SF2"))
 									{
-										m_threadPool.queueFunc([&, options]
+										m_threadPool.queueFunc([&, file, options]
 										{
 											E4Result tempResult;
 
@@ -296,7 +296,7 @@ void E4BViewer::Render()
 								{
 									if (strCI(m_conversionType, "E4B"))
 									{
-										m_threadPool.queueFunc([&, options]
+										m_threadPool.queueFunc([&, file, options]
 										{
 											constexpr BankConverter converter;
 											if (converter.ConvertSF2ToE4B(file, file.filename().replace_extension("").string(), options))
