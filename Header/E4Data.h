@@ -17,6 +17,7 @@ enum EEOSCordSource : uint8_t
 	PITCH_WHEEL = 16ui8,
 	MOD_WHEEL = 17ui8,
 	PRESSURE = 18ui8,
+	PEDAL = 19ui8,
 	MIDI_A = 20ui8,
 	MIDI_B = 21ui8,
 	FOOTSWITCH_1 = 22ui8,

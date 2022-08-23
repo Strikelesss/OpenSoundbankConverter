@@ -6,14 +6,13 @@ struct E4Result;
 struct ConverterOptions final
 {
 	ConverterOptions() = default;
-	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool isChickenTranslatorFile, const bool ignoreFileNameSetting = false)
-		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_isChickenTranslatorFile(isChickenTranslatorFile), m_ignoreFileNameSetting(ignoreFileNameSetting) {}
+	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool isChickenTranslatorFile)
+		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_isChickenTranslatorFile(isChickenTranslatorFile) {}
 
 	bool m_flipPan = false;
 	bool m_useConverterSpecificData = true;
 	bool m_isChickenTranslatorFile = false;
-	bool m_ignoreFileNameSetting = false;
-	std::filesystem::path m_ignoreFileNameSettingSaveFolder;
+	std::filesystem::path m_saveFolder;
 };
 
 namespace SF2Converter

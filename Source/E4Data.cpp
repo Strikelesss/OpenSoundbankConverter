@@ -1,6 +1,7 @@
 #include "Header/E4Data.h"
 #include "Header/VoiceDefinitions.h"
 #include "Header/BinaryWriter.h"
+#include "Header/MathFunctions.h"
 
 E4LFO::E4LFO(const double rate, const uint8_t shape, const double delay, const bool keySync) : m_rate(VoiceDefinitions::GetByteFromLFORate(rate)),
 	m_shape(shape), m_delay(VoiceDefinitions::GetByteFromLFODelay(delay)), m_keySync(!keySync) {}
@@ -29,7 +30,7 @@ float E4Voice::GetChorusWidth() const
 
 float E4Voice::GetChorusAmount() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_chorusAmount);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_chorusAmount), 2u);
 }
 
 uint16_t E4Voice::GetFilterFrequency() const
@@ -44,7 +45,7 @@ double E4Voice::GetFineTune() const
 
 float E4Voice::GetFilterQ() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_filterQ);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_filterQ), 1u);
 }
 
 double E4Voice::GetKeyDelay() const
@@ -128,32 +129,32 @@ bool E4EMSt::write(BinaryWriter& writer)
 
 float E4Envelope::GetAttack1Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_attack1Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_attack1Level), 2u);
 }
 
 float E4Envelope::GetAttack2Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_attack2Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_attack2Level), 2u);
 }
 
 float E4Envelope::GetDecay1Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_decay1Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_decay1Level), 2u);
 }
 
 float E4Envelope::GetDecay2Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_decay2Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_decay2Level), 2u);
 }
 
 float E4Envelope::GetRelease1Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_release1Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_release1Level), 2u);
 }
 
 float E4Envelope::GetRelease2Level() const
 {
-	return VoiceDefinitions::GetBottomSectionPercent(m_release2Level);
+	return MathFunctions::round_f_places(VoiceDefinitions::ConvertByteToPercentF(m_release2Level), 2u);
 }
 
 bool E4Envelope::write(BinaryWriter& writer)

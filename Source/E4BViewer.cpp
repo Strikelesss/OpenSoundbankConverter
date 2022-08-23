@@ -6,6 +6,7 @@
 #include "Header/E4BFunctions.h"
 #include "Header/E4Result.h"
 #include "Header/Logger.h"
+#include <fstream>
 #include <ShlObj_core.h>
 #include <tchar.h>
 
@@ -194,21 +195,20 @@ void E4BViewer::Render()
 
 				ImGui::EndDisabled();
 
-				ImGui::BeginDisabled(m_conversionType.empty());
-
-				if (strCI(m_conversionType, "SF2"))
+				// TODO: remove
+				if (!m_bankFiles.empty())
 				{
-					// TODO: remove
-					if (ImGui::Button("Verify Cords"))
+					const auto firstExt(m_bankFiles[0].extension().string());
+					if (strCI(firstExt, ".E4B"))
 					{
-						for (const auto& file : m_bankFiles)
+						if (ImGui::Button("Verify Cords"))
 						{
-							if (exists(file))
+							for (const auto& file : m_bankFiles)
 							{
-								const auto ext(file.extension().string());
-								if (strCI(ext, ".E4B"))
+								if (exists(file))
 								{
-									if (strCI(m_conversionType, "SF2"))
+									const auto ext(file.extension().string());
+									if (strCI(ext, ".E4B"))
 									{
 										m_threadPool.queueFunc([&]
 										{
@@ -229,6 +229,8 @@ void E4BViewer::Render()
 					}
 				}
 
+				ImGui::BeginDisabled(m_conversionType.empty());
+
 				ImGui::Checkbox("Flip Pan", &m_flipPan);
 
 				if(strCI(m_conversionType, "E4B"))
@@ -247,7 +249,7 @@ void E4BViewer::Render()
 						browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
 						browseInfo.lpszTitle = _T("Select a folder to export to");
 
-						ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile, true);
+						ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile);
 
 						const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
 						if (pidl != nullptr)
@@ -262,7 +264,7 @@ void E4BViewer::Render()
 								imalloc->Release();
 							}
 
-							options.m_ignoreFileNameSettingSaveFolder = std::filesystem::path(path.data());
+							options.m_saveFolder = std::filesystem::path(path.data());
 						}
 
 						for (const auto& file : m_bankFiles)
@@ -331,6 +333,31 @@ void E4BViewer::Render()
 
 			if(ImGui::BeginTabItem("Console"))
 			{
+				if(ImGui::Button("Export"))
+				{
+					std::wstring exportPath;
+					exportPath.resize(MAX_PATH);
+
+					OPENFILENAME ofn{};
+					ofn.lStructSize = sizeof ofn;
+					ofn.hwndOwner = nullptr;
+					ofn.lpstrFilter = _T(".txt");
+					ofn.lpstrFile = exportPath.data();
+					ofn.nMaxFile = MAX_PATH;
+					ofn.Flags = OFN_EXPLORER;
+					ofn.lpstrDefExt = _T("txt");
+
+					if (GetSaveFileName(&ofn))
+					{
+						std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
+						for(const auto& msg : Logger::GetLogMessages()) 
+						{
+							ofs.write(msg.c_str(), static_cast<std::streamsize>(msg.length()));
+							ofs << std::endl;
+						}
+					}
+				}
+
 				if(ImGui::BeginListBox("##console", {-1.f, -1.f}))
 				{
 					for(const auto& msg : Logger::GetLogMessages()) 

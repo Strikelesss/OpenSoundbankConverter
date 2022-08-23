@@ -122,27 +122,13 @@ uint8_t VoiceDefinitions::GetByteFromSecRelease(const double sec)
 	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.1 + 59.));
 }
 
-float VoiceDefinitions::GetBottomSectionPercent(const uint8_t value)
-{
-	return MathFunctions::round_f_places(static_cast<float>(value) * 100.f / 127.f, 2u);
-}
-
+// TODO: figure out the correct way of converting [-128, 0] to [0%, 100%]
 float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)
 {
-	return MathFunctions::clamp_f(GetBottomSectionPercent(value + 128ui8), 0.f, 100.f);
+	return MathFunctions::clamp_f(MathFunctions::round_f_places(ConvertByteToPercentF(static_cast<uint8_t>(value + 128ui8)), 2u), 0.f, 100.f);
 }
 
 int8_t VoiceDefinitions::ConvertPercentToByteF(const float value)
 {
 	return static_cast<int8_t>(std::roundf(value * 127.f / 100.f));
-}
-
-int8_t VoiceDefinitions::ConvertPercentToByteD(const double value)
-{
-	return static_cast<int8_t>(std::round(value * 127. / 100.));
-}
-
-float VoiceDefinitions::ConvertByteToPercentF(const int8_t b)
-{
-	return std::roundf(static_cast<float>(b) / 127.f * 100.f);
 }

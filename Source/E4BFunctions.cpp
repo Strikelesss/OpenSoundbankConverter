@@ -174,6 +174,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 	return true;
 }
 
+// TODO: remove
 bool E4BFunctions::IsAccountingForCords(const E4Result& result)
 {
 	bool isAccounting(true);
@@ -199,6 +200,7 @@ bool E4BFunctions::IsAccountingForCords(const E4Result& result)
 				if(cord.GetSource() == KEY_POLARITY_CENTER && cord.GetDest() == FILTER_FREQ) { continue; }
 				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == FILTER_FREQ) { continue; }
 				if(cord.GetSource() == PRESSURE && cord.GetDest() == AMP_ENV_ATTACK) { continue; }
+				if(cord.GetSource() == PEDAL && cord.GetDest() == AMP_VOLUME) { continue; }
 
 				// skipping these
 				if(cord.GetSource() == 0ui8 && cord.GetDest() == CORD_3_AMT) { continue; }

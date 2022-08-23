@@ -154,7 +154,6 @@
     <ClCompile Include="Dependencies\ImGui\imgui_draw.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_tables.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_widgets.cpp" />
-    <ClCompile Include="Dependencies\ImGui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="Dependencies\sf2cute\src\sf2cute\file.cpp" />
     <ClCompile Include="Dependencies\sf2cute\src\sf2cute\file_writer.cpp" />
     <ClCompile Include="Dependencies\sf2cute\src\sf2cute\generator_item.cpp" />
@@ -198,8 +197,6 @@
     <ClInclude Include="Dependencies\ImGui\imstb_rectpack.h" />
     <ClInclude Include="Dependencies\ImGui\imstb_textedit.h" />
     <ClInclude Include="Dependencies\ImGui\imstb_truetype.h" />
-    <ClInclude Include="Dependencies\ImGui\misc\cpp\imgui_stdlib.h" />
-    <ClInclude Include="Dependencies\ImGui\misc\freetype\imgui_freetype.h" />
     <ClInclude Include="Dependencies\sf2cute\include\sf2cute.hpp" />
     <ClInclude Include="Dependencies\sf2cute\include\sf2cute\file.hpp" />
     <ClInclude Include="Dependencies\sf2cute\include\sf2cute\generator_item.hpp" />
@@ -227,7 +224,6 @@
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_pmod_chunk.hpp" />
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_shdr_chunk.hpp" />
     <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_smpl_chunk.hpp" />
-    <ClInclude Include="Dependencies\TinySoundFont\tml.h" />
     <ClInclude Include="Dependencies\TinySoundFont\tsf.h" />
     <ClInclude Include="Header\BankConverter.h" />
     <ClInclude Include="Header\BinaryReader.h" />

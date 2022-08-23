@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <string>
+#include <string_view>
 
 namespace VoiceDefinitions
 {
@@ -38,10 +38,16 @@ namespace VoiceDefinitions
 	[[nodiscard]] double GetTimeFromCurveRelease(uint8_t b);
 	[[nodiscard]] uint8_t GetByteFromSecRelease(double sec);
 
-	[[nodiscard]] float GetBottomSectionPercent(uint8_t value);
 	[[nodiscard]] float GetChorusWidthPercent(uint8_t value);
 	[[nodiscard]] constexpr uint8_t ConvertChorusWidthToByte(const float value) { return static_cast<uint8_t>(value * 128.f / 100.f + 128.f); }
 	[[nodiscard]] int8_t ConvertPercentToByteF(float value);
-	[[nodiscard]] int8_t ConvertPercentToByteD(double value);
-	[[nodiscard]] float ConvertByteToPercentF(int8_t b);
+
+	template<typename T>
+	[[nodiscard]] constexpr float ConvertByteToPercentF(const T b)
+	{
+		// Make sure we're only converting bytes
+		static_assert(sizeof(T) == 1);
+
+		return static_cast<float>(b) / 127.f * 100.f;
+	}
 }

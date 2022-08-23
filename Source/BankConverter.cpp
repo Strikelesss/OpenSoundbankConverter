@@ -6,7 +6,6 @@
 #include "Header/BinaryReader.h"
 #include "Header/MathFunctions.h"
 #include "Header/Logger.h"
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -20,9 +19,6 @@
 
 // File reading/writing
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <commdlg.h>
-#include <tchar.h>
 
 //
 // These are NOT correct but will work until we can determine how each sound in the SF2
@@ -48,13 +44,26 @@ int16_t SF2Converter::secToTimecent(const double sec)
 
 bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options) const
 {
-	if(e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty()) { return false; }
+	if(e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty())
+	{
+		Logger::LogMessage("Bank had no samples/presets, or the provided name was empty.");
+		return false;
+	}
 
 	const auto convertedName(ConvertNameToSFName(bankName));
 
 	sf2cute::SoundFont sf2;
 	sf2.set_bank_name(convertedName);
 	sf2.set_sound_engine("EMU8000");
+
+	std::string currentPresetStr;
+	currentPresetStr.resize(static_cast<size_t>(std::snprintf(nullptr, 0, "Current preset is set to %d", e4b.GetCurrentPreset())) + 1);
+	const auto newSize(std::snprintf(currentPresetStr.data(), currentPresetStr.size(), "Current preset is set to %d", e4b.GetCurrentPreset()));
+
+	// Remove the null-terminating character
+	currentPresetStr.resize(newSize);
+
+	sf2.set_comment(std::move(currentPresetStr));
 
 	for(const auto& e4Sample : e4b.GetSamples())
 	{
@@ -159,7 +168,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto filterFreqCents(VoiceDefinitions::hertzToCents(voice.GetFilterFrequency()));
 			if (filterFreqCents >= 1500i16 && filterFreqCents < 13500i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, filterFreqCents)); }
 
-			const auto filterQ(MathFunctions::round_f_places(voice.GetFilterQ(), 1u));
+			const auto filterQ(voice.GetFilterQ());
 			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
 
 			// LFO
@@ -237,7 +246,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if (voice.GetAmountFromCord(MIDI_A, AMP_VOLUME, cordAmtPercent7))
 			{
 				// MIDI A -> Amp Volume
-				const auto midiA(sf2cute::SFModulator(sf2cute::SFMidiController::kController2, sf2cute::SFControllerDirection::kIncrease,
+				const auto midiA(sf2cute::SFModulator(sf2cute::SFMidiController::kController21, sf2cute::SFControllerDirection::kIncrease,
 					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
 
 				instrumentZone.SetModulator(sf2cute::SFModulatorItem(midiA, sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(cordAmtPercent7),
@@ -326,6 +335,17 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
 			}
 
+			float cordAmtPercent16(0.f);
+			if (voice.GetAmountFromCord(PEDAL, AMP_VOLUME, cordAmtPercent16))
+			{
+				// Pedal -> Amp Volume
+				const auto pedal(sf2cute::SFModulator(sf2cute::SFMidiController::kController4, sf2cute::SFControllerDirection::kIncrease,
+					sf2cute::SFControllerPolarity::kUnipolar, sf2cute::SFControllerType::kLinear));
+
+				instrumentZone.SetModulator(sf2cute::SFModulatorItem(pedal, sf2cute::SFGenerator::kInitialAttenuation, static_cast<int16_t>(cordAmtPercent16),
+					sf2cute::SFModulator(), sf2cute::SFTransform::kAbsoluteValue));
+			}
+
 			// Amplifier / Oscillator
 
 			const auto pan(options.m_flipPan ? -voice.GetPan() : voice.GetPan());
@@ -362,37 +382,13 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 	try 
 	{
-		if (!options.m_ignoreFileNameSetting)
+		auto savePath(options.m_saveFolder);
+		if(!savePath.empty() && exists(savePath))
 		{
-			auto sf2Path(std::filesystem::path(convertedName).wstring());
-			sf2Path.resize(MAX_PATH);
-
-			OPENFILENAME ofn{};
-			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = nullptr;
-			ofn.lpstrFilter = _T(".sf2");
-			ofn.lpstrFile = sf2Path.data();
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_EXPLORER;
-			ofn.lpstrDefExt = _T("sf2");
-
-			if (GetSaveFileName(&ofn))
-			{
-				std::ofstream ofs(ofn.lpstrFile, std::ios::binary);
-				sf2.Write(ofs);
-				return true;
-			}
-		}
-		else
-		{
-			auto path(options.m_ignoreFileNameSettingSaveFolder);
-			if(!path.empty() && exists(path))
-			{
-				auto sf2Path(path.append(std::filesystem::path(convertedName + ".sf2").wstring()));
-				std::ofstream ofs(sf2Path, std::ios::binary);
-				sf2.Write(ofs);
-				return true;
-			}
+			auto sf2Path(savePath.append(std::filesystem::path(convertedName + ".sf2").wstring()));
+			std::ofstream ofs(sf2Path, std::ios::binary);
+			sf2.Write(ofs);
+			return true;
 		}
 	}
 	catch (const std::fstream::failure& e) 
@@ -415,37 +411,19 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 // with multisample: 328 bytes
 bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options) const
 {
-	if(exists(bank) && !bankName.empty())
+	if(!bank.empty() && !bankName.empty() && exists(bank))
 	{
 		std::string sf2PathTemp(bankName);
 		std::filesystem::path sf2Path;
-		if (!options.m_ignoreFileNameSetting)
+		auto savePath(options.m_saveFolder);
+		if(!savePath.empty() && exists(savePath))
 		{
-			sf2PathTemp.resize(MAX_PATH);
-
-			OPENFILENAMEA ofn{};
-			ofn.lStructSize = sizeof ofn;
-			ofn.hwndOwner = nullptr;
-			ofn.lpstrFilter = ".E4B";
-			ofn.lpstrFile = sf2PathTemp.data();
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_EXPLORER;
-			ofn.lpstrDefExt = "E4B";
-
-			if (!GetSaveFileNameA(&ofn)) { return false; }
-			sf2Path = sf2PathTemp;
+			sf2Path = savePath.append(sf2PathTemp + ".E4B");
 		}
 		else
 		{
-			auto path(options.m_ignoreFileNameSettingSaveFolder);
-			if(!path.empty() && exists(path))
-			{
-				sf2Path = path.append(sf2PathTemp + ".E4B");
-			}
-			else
-			{
-				return false;
-			}
+			Logger::LogMessage("Path was empty or did not exist.");
+			return false;
 		}
 
 		BinaryWriter writer(sf2Path);
@@ -461,7 +439,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 				if (writer.writeType(E4BVariables::EOS_FORM_TAG.data(), E4BVariables::EOS_FORM_TAG.length()))
 				{
 					const auto& numPresets(sf2->presetNum);
-					if (numPresets <= 0) { return false; }
+					if (numPresets <= 0) { Logger::LogMessage("Preset count was <= 0"); return false; }
 
 					std::unordered_map<size_t, size_t> presetChunkLocations{}, sampleChunkLocations{};
 
@@ -776,7 +754,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																					}
 																					else if (srcOper.controller_palette() == sf2cute::SFControllerPalette::kMidiController)
 																					{
-																						if (srcOper.midi_controller() == sf2cute::SFMidiController::kController2)
+																						if (srcOper.midi_controller() == sf2cute::SFMidiController::kController21)
 																						{
 																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
 																							{
@@ -796,6 +774,19 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																									{
 																										voice.ReplaceOrAddCord(MOD_WHEEL, FILTER_FREQ, VoiceDefinitions::ConvertPercentToByteF(
 																											SF2Converter::centsToFilterFreqPercent(mod.modAmount)));
+																									}
+																								}
+																							}
+																						}
+																						else if(srcOper.midi_controller() == sf2cute::SFMidiController::kController4)
+																						{
+																							if (srcOper.direction() == sf2cute::SFControllerDirection::kIncrease)
+																							{
+																								if (destOper == sf2cute::SFGenerator::kInitialAttenuation)
+																								{
+																									if (srcOper.polarity() == sf2cute::SFControllerPolarity::kUnipolar)
+																									{
+																										voice.ReplaceOrAddCord(PEDAL, AMP_VOLUME, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
 																									}
 																								}
 																							}
@@ -954,6 +945,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 		}
 	}
 
+	Logger::LogMessage("Provided bank name was empty, or provided path was empty/did not exist.");
 	return false;
 }
 

@@ -11,10 +11,10 @@ namespace Logger
 	{
 		std::string stringBuffer;
 		stringBuffer.resize(static_cast<size_t>(std::snprintf(nullptr, 0, msg.data(), std::forward<Args>(args)...)) + 1);
-		std::snprintf(stringBuffer.data(), stringBuffer.size(), msg.data(), std::forward<Args>(args)...);
+		const auto newSize(std::snprintf(stringBuffer.data(), stringBuffer.size(), msg.data(), std::forward<Args>(args)...));
 
 		// Remove the null-terminating character
-		stringBuffer.resize(stringBuffer.size() - 1);
+		stringBuffer.resize(newSize);
 
 		m_logMessages.emplace_back(std::move(stringBuffer));
 	}
