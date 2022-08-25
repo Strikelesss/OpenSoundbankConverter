@@ -5,14 +5,14 @@
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const E4Voice& voice, std::pair<uint8_t, uint8_t>&& zoneRange, const uint8_t originalKey, const uint8_t sampleIndex, const int8_t volume, const int8_t pan, const double fineTune, const std::array<E4Cord, 24>& cords) : m_zone(std::move(zoneRange)), m_velocity(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()), m_fineTune(fineTune),
+	explicit E4VoiceResult(const E4Voice& voice, const E4VoiceNoteData& keyZoneRange, const uint8_t originalKey, const uint8_t sampleIndex, const int8_t volume, const int8_t pan, const double fineTune, const std::array<E4Cord, 24>& cords) : m_keyData(keyZoneRange), m_velData(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()), m_fineTune(fineTune),
 		m_coarseTune(voice.GetCoarseTune()), m_filterQ(voice.GetFilterQ()), m_volume(volume), m_pan(pan), m_filterFrequency(voice.GetFilterFrequency()), m_chorusAmount(voice.GetChorusAmount()), m_chorusWidth(voice.GetChorusWidth()), m_originalKey(originalKey), m_sampleIndex(sampleIndex),
 		m_keyDelay(voice.GetKeyDelay()), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()), m_lfo1(voice.GetLFO1()), m_lfo2(voice.GetLFO2()), m_cords(cords) {}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
-	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetZoneRange() const { return m_zone; }
+	[[nodiscard]] const E4VoiceNoteData& GetKeyZoneRange() const { return m_keyData; }
 	[[nodiscard]] uint8_t GetOriginalKey() const { return m_originalKey; }
-	[[nodiscard]] const std::pair<uint8_t, uint8_t>& GetVelocityRange() const { return m_velocity; }
+	[[nodiscard]] const E4VoiceNoteData& GetVelocityRange() const { return m_velData; }
 	[[nodiscard]] uint16_t GetFilterFrequency() const { return m_filterFrequency; }
 	[[nodiscard]] int8_t GetPan() const { return m_pan; }
 	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
@@ -36,8 +36,8 @@ struct E4VoiceResult final
 	[[nodiscard]] bool GetAmountFromCord(uint8_t src, uint8_t dst, float& outAmount) const;
 
 private:
-	std::pair<uint8_t, uint8_t> m_zone{0ui8, 0ui8};
-	std::pair<uint8_t, uint8_t> m_velocity{0ui8, 0ui8};
+	E4VoiceNoteData m_keyData;
+	E4VoiceNoteData m_velData;
 	std::string_view m_filterType;
 	double m_fineTune = 0.;
 	int8_t m_coarseTune = 0i8;

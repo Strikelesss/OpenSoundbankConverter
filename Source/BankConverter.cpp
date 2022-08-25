@@ -17,9 +17,6 @@
 // SF2 writing
 #include <sf2cute.hpp>
 
-// File reading/writing
-#define WIN32_LEAN_AND_MEAN
-
 //
 // These are NOT correct but will work until we can determine how each sound in the SF2
 // TODO: correct these values
@@ -84,12 +81,12 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if (e4Sample.IsLooping()) { sampleMode |= static_cast<uint16_t>(sf2cute::SampleMode::kLoopContinuously); }
 			if (e4Sample.IsReleasing()) { sampleMode |= 2ui16; }
 
-			const auto& zoneRange(voice.GetZoneRange());
+			const auto& zoneRange(voice.GetKeyZoneRange());
 			const auto& velRange(voice.GetVelocityRange());
 
 			sf2cute::SFInstrumentZone instrumentZone(sf2.samples()[sampleIndex], std::vector{
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.first, zoneRange.second)),
-				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.first, velRange.second))
+				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kKeyRange, sf2cute::RangesType(zoneRange.GetLow(), zoneRange.GetHigh())),
+				sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kVelRange, sf2cute::RangesType(velRange.GetLow(), velRange.GetHigh()))
 			}, std::vector<sf2cute::SFModulatorItem>{});
 
 			const auto voiceVolBefore(voice.GetVolume());
@@ -468,8 +465,6 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 					}
 
 					totalSize += static_cast<uint32_t>(E4BVariables::EOS_EMSt_TAG.length());
-
-					// TODO: ensure this is the correct size
 					totalSize += TOTAL_EMST_DATA_SIZE;
 
 					// Byteswap since E4B requires it
@@ -494,7 +489,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									{
 										if (writer.writeType(E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()))
 										{
-											const auto preset(sf2->presets[i]);
+											const auto& preset(sf2->presets[i]);
 											const uint32_t presetChunkLen(_byteswap_ulong(TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 											if (writer.writeType(&presetChunkLen))
 											{
@@ -503,7 +498,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 												constexpr uint32_t presetChunkLoc(0u);
 												if (writer.writeType(&presetChunkLoc))
 												{
-													const auto presetNum(static_cast<uint16_t>(i));
+													const auto presetNum(_byteswap_ushort(static_cast<uint16_t>(i)));
 													if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN)
 														&& writer.writeType(&redundant16)) { continue; }
 												}

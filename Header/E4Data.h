@@ -38,12 +38,33 @@ enum EEOSCordDest : uint8_t
 	CORD_3_AMT = 170ui8
 };
 
+struct E4VoiceNoteData final
+{
+	E4VoiceNoteData() = default;
+	explicit E4VoiceNoteData(const uint8_t low, const uint8_t high) : m_low(low), m_high(high) {}
+	explicit E4VoiceNoteData(const uint8_t low, const uint8_t lowFade, const uint8_t highFade, const uint8_t high)
+		: m_low(low), m_lowFade(lowFade), m_highFade(highFade), m_high(high) {}
+
+	[[nodiscard]] uint8_t GetLow() const { return m_low; }
+	[[nodiscard]] uint8_t GetHigh() const { return m_high; }
+	[[nodiscard]] bool write(BinaryWriter& writer);
+	void SetLow(const uint8_t low) { m_low = low; }
+	void SetHigh(const uint8_t high) { m_high = high; }
+
+private:
+	uint8_t m_low = 0ui8;
+	uint8_t m_lowFade = 0ui8;
+	uint8_t m_highFade = 0ui8;
+	uint8_t m_high = 127ui8;
+};
+
 struct E4VoiceEndData final
 {
 	E4VoiceEndData() = default;
 	explicit E4VoiceEndData(const uint8_t sampleIndex, const uint8_t originalKey) : m_sampleIndex(sampleIndex), m_originalKey(originalKey) {}
 
-	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const { return std::make_pair(m_lowZone, m_highZone); }
+	[[nodiscard]] const E4VoiceNoteData& GetKeyZoneRange() const { return m_keyData; }
+	[[nodiscard]] const E4VoiceNoteData& GetVelocityRange() const { return m_velData; }
 	[[nodiscard]] double GetFineTune() const;
 	[[nodiscard]] int8_t GetVolume() const { return m_volume; }
 	[[nodiscard]] int8_t GetPan() const { return m_pan; }
@@ -52,19 +73,18 @@ struct E4VoiceEndData final
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
 private:
-	int8_t m_lowZone = 0i8;
-	std::array<int8_t, 2> m_possibleRedundant1{};
-	int8_t m_highZone = 127i8;
+	E4VoiceNoteData m_keyData;
+	E4VoiceNoteData m_velData;
 
-	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\0', 127i8};
+	int8_t m_possibleRedundant1 = 0i8;
 	uint8_t m_sampleIndex = 0ui8;
-	int8_t m_possibleRedundant3 = 0i8;
+	int8_t m_possibleRedundant2 = 0i8;
 	int8_t m_fineTune = 0i8;
 
 	uint8_t m_originalKey = 0ui8;
 	int8_t m_volume = 0i8;
 	int8_t m_pan = 0i8;
-	int8_t m_possibleRedundant4 = 0i8;
+	int8_t m_possibleRedundant3 = 0i8;
 };
 
 constexpr auto VOICE_END_DATA_SIZE = 22ull;
@@ -113,7 +133,6 @@ private:
 struct E4LFO final
 {
 	E4LFO() = default;
-
 	explicit E4LFO(double rate, uint8_t shape, double delay, bool keySync);
 
 	[[nodiscard]] bool write(BinaryWriter& writer);
@@ -128,7 +147,7 @@ private:
 	uint8_t m_variation = 0ui8;
 	bool m_keySync = true; // 00 = on, 01 = off (make sure to flip when getting)
 
-	std::array<int8_t, 3> m_possibleRedundant2{};
+	std::array<int8_t, 3> m_possibleRedundant1{};
 };
 
 struct E4Cord final
@@ -145,27 +164,18 @@ struct E4Cord final
 private:
 	uint8_t m_src = 0ui8;
 	uint8_t m_dst = 0ui8;
-	int8_t m_amt = 0ui8;
+	int8_t m_amt = 0i8;
 	[[maybe_unused]] uint8_t m_possibleRedundant1 = 0ui8;
 };
 
 struct E4Voice final
 {
 	E4Voice() = default;
-
 	explicit E4Voice(float chorusWidth, float chorusAmount, uint16_t filterFreq, int8_t coarseTune, int8_t pan, int8_t volume, double fineTune, float keyDelay,
 		float filterQ, std::pair<uint8_t, uint8_t> zone, std::pair<uint8_t, uint8_t> velocity, E4Envelope&& ampEnv, E4Envelope&& filterEnv, E4LFO lfo1);
 
-	[[nodiscard]] std::pair<uint8_t, uint8_t> GetZoneRange() const
-	{
-		return std::make_pair(m_lowZone, m_highZone);
-	}
-
-	[[nodiscard]] std::pair<uint8_t, uint8_t> GetVelocityRange() const
-	{
-		return std::make_pair(m_minVelocity, m_maxVelocity);
-	}
-
+	[[nodiscard]] const E4VoiceNoteData& GetKeyZoneRange() const { return m_keyData; }
+	[[nodiscard]] const E4VoiceNoteData& GetVelocityRange() const { return m_velData; }
 	[[nodiscard]] uint16_t GetVoiceDataSize() const { return _byteswap_ushort(m_totalVoiceSize); }
 	[[nodiscard]] float GetChorusWidth() const;
 	[[nodiscard]] float GetChorusAmount() const;
@@ -187,73 +197,61 @@ struct E4Voice final
 
 	void ReplaceOrAddCord(uint8_t src, uint8_t dst, float amount);
 
-	// release values:
-	// 0 = 0
-	// 12 = 0.108
-	// 32 = 0.411
-	// 59 = 1.976
-	// 84 = 8.045
-	// 97 = 16.872
-	// 111 = 40.119
-	// 120 = 79.558
-	// 127 = 163.60
-
 private:
-	uint16_t m_totalVoiceSize = 0i16; // requires byteswap
-	int8_t m_possibleRedundant1 = 1i8;
+	uint16_t m_totalVoiceSize = 0ui16; // requires byteswap
+	int8_t m_zone = 1i8;
 	int8_t m_group = 0i8;
-	std::array<int8_t, 8> m_possibleRedundant2{'\0', 'd'};
-	uint8_t m_lowZone = 0ui8;
-	uint8_t m_lowFade = 0ui8;
-	uint8_t m_highFade = 0ui8;
-	uint8_t m_highZone = 0ui8;
+	std::array<int8_t, 8> m_amplifierData{'\0', 100i8};
 
-	uint8_t m_minVelocity = 0ui8;
-	std::array<int8_t, 2> m_possibleRedundant3{};
-	uint8_t m_maxVelocity = 0ui8;
+	E4VoiceNoteData m_keyData;
+	E4VoiceNoteData m_velData;
+	E4VoiceNoteData m_rtData;
 
-	std::array<int8_t, 6> m_possibleRedundant4{'\0', '\0', '\0', 127i8};
+	int8_t m_possibleRedundant1 = 0i8;
+	uint8_t m_keyAssignGroup = 0ui8;
 	uint16_t m_keyDelay = 0ui16; // requires byteswap
-	std::array<int8_t, 3> m_possibleRedundant5{};
+	std::array<int8_t, 3> m_possibleRedundant2{};
 	uint8_t m_sampleOffset = 0ui8; // percent
 
 	int8_t m_transpose = 0i8;
 	int8_t m_coarseTune = 0i8;
 	int8_t m_fineTune = 0i8;
-	int8_t m_possibleRedundant6 = 0i8;
+	uint8_t m_glideRate = 0ui8;
 	bool m_fixedPitch = false;
-	std::array<int8_t, 2> m_possibleRedundant7{};
+	uint8_t m_keyMode = 0ui8;
+	int8_t m_possibleRedundant3 = 0i8;
 	uint8_t m_chorusWidth = 128ui8;
 
 	int8_t m_chorusAmount = 128i8;
-	std::array<int8_t, 11> m_possibleRedundant8{};
+	std::array<int8_t, 11> m_possibleRedundant4{};
 	int8_t m_volume = 0i8;
 	int8_t m_pan = 0i8;
-	std::array<int8_t, 2> m_possibleRedundant9{};
+	int8_t m_possibleRedundant5 = 0i8;
+	int8_t m_ampEnvDynRange = 0i8;
 
 	uint8_t m_filterType = 127ui8;
-	int8_t m_possibleRedundant10 = 0i8;
+	int8_t m_possibleRedundant6 = 0i8;
 	uint8_t m_filterFrequency = 0ui8;
 	uint8_t m_filterQ = 0ui8;
 
-	std::array<int8_t, 48> m_possibleRedundant11{};
+	std::array<int8_t, 48> m_possibleRedundant7{};
 
 	E4Envelope m_ampEnv{}; // 120
 
-	std::array<int8_t, 2> m_possibleRedundant12{}; // 122
+	std::array<int8_t, 2> m_possibleRedundant8{}; // 122
 
 	E4Envelope m_filterEnv{}; // 134
 
-	std::array<int8_t, 2> m_possibleRedundant13{}; // 136
+	std::array<int8_t, 2> m_possibleRedundant9{}; // 136
 
 	E4Envelope m_auxEnv{}; // 148
 
-	std::array<int8_t, 2> m_possibleRedundant14{}; // 150
+	std::array<int8_t, 2> m_possibleRedundant10{}; // 150
 
 	E4LFO m_lfo1{}; // 158
 	E4LFO m_lfo2{}; // 166
 
-	std::array<int8_t, 22> m_possibleRedundant15{}; // 188
+	std::array<int8_t, 22> m_possibleRedundant11{}; // 188
 
 	std::array<E4Cord, 24> m_cords{E4Cord(VEL_POLARITY_LESS, AMP_VOLUME, 0ui8), E4Cord(PITCH_WHEEL, PITCH, 1ui8), E4Cord(LFO1_POLARITY_CENTER, PITCH, 0ui8), E4Cord(MOD_WHEEL, CORD_3_AMT, 6ui8),
 		E4Cord(VEL_POLARITY_LESS, FILTER_FREQ, 0ui8), E4Cord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, 0ui8), E4Cord(KEY_POLARITY_CENTER, FILTER_FREQ, 0ui8), E4Cord(FOOTSWITCH_1, KEY_SUSTAIN, 127ui8)}; // 284
@@ -274,14 +272,19 @@ struct E4Preset final
 
 private:
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
-	uint16_t m_presetDataSize = 0ui16; // requires byteswap
+	uint16_t m_presetDataSize = 0ui16; // generally 82 // requires byteswap
 	uint16_t m_numVoices = 0ui16; // requires byteswap
+	std::array<int8_t, 4> m_possibleRedundant1{};
+	int8_t m_transpose = 0i8;
+	int8_t m_volume = 0i8;
+	std::array<int8_t, 28> m_possibleRedundant2{};
+	std::array<uint8_t, 4> m_controllers{255ui8, 255ui8, 255ui8, 255ui8};
 
-	[[maybe_unused]] std::array<int16_t, 2> m_padding{};
+	[[maybe_unused]] std::array<int8_t, 6> m_padding{};
 };
 
-constexpr auto PRESET_DATA_READ_SIZE = 20ull;
 constexpr auto TOTAL_PRESET_DATA_SIZE = 82ull;
+constexpr auto PRESET_DATA_READ_SIZE = 26ull;
 
 struct E4Sequence final
 {
@@ -293,22 +296,34 @@ private:
 
 constexpr auto SEQUENCE_DATA_READ_SIZE = 16ull;
 
-// Startup?
+struct E4MIDIChannel final
+{
+private:
+	uint8_t m_volume = 127ui8;
+	uint8_t m_pan = 0ui8;
+	std::array<uint8_t, 3> m_possibleRedundant1{};
+	uint8_t m_aux = 255ui8; // 255 = on
+	std::array<uint8_t, 16> m_controllers{};
+	std::array<uint8_t, 8> m_possibleRedundant2{'\0', '\0', '\0', '\0', 127ui8};
+	uint16_t m_presetNum = 65535ui16; // 65535 = none
+};
+
 struct E4EMSt final
 {
 	[[nodiscard]] uint8_t GetCurrentPreset() const { return m_currentPreset; }
 	[[nodiscard]] bool write(BinaryWriter& writer);
 private:
-	uint32_t m_dataSize = 0u;
 	std::array<int8_t, 2> m_possibleRedundant1{};
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{'U', 'n', 't', 'i', 't', 'l', 'e', 'd', ' ', 'M', 'S', 'e', 't', 'u', 'p', ' '};
 	std::array<int8_t, 5> m_possibleRedundant2{'\0', '\0', '\2'};
 	uint8_t m_currentPreset = 0ui8;
-	std::array<uint8_t, 28> m_possibleRedundant3{127ui8, '\0', '\0', '\0', '\0', 255ui8, '\0', '\0', '\0', '\0', '\0', '\0', '\0',
-		'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', 127ui8};
+	std::array<E4MIDIChannel, 32> m_midiChannels{};
+	std::array<uint8_t, 5> m_possibleRedundant3{255ui8, 255ui8};
+	int8_t m_tempo = 20i8;
+	std::array<uint8_t, 312> m_possibleRedundant4{'\0', '\0', '\0', '\0', 255ui8, 255ui8, 255ui8, 255ui8};
+
+	std::array<int8_t, 2> m_padding{};
 };
 
-constexpr auto TOTAL_EMST_DATA_SIZE = 56ull;
-constexpr auto EMST_DATA_READ_SIZE = 28ull;
-
-constexpr auto unused_test = 28;
+constexpr auto TOTAL_EMST_DATA_SIZE = 1366ull;
+constexpr auto EMST_DATA_READ_SIZE = 1366ull;

@@ -79,7 +79,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						E4VoiceEndData voiceEnd;
 						reader.readTypeAtLocation(&voiceEnd, voicePos + VOICE_DATA_SIZE + k * VOICE_END_DATA_SIZE, VOICE_END_DATA_READ_SIZE);
 
-						auto zoneRange(numVoiceEnds > 1ull ? voiceEnd.GetZoneRange() : voice.GetZoneRange());
+						auto keyZoneRange(numVoiceEnds > 1ull ? voiceEnd.GetKeyZoneRange() : voice.GetKeyZoneRange());
 						const auto pan(numVoiceEnds > 1ull ? voiceEnd.GetPan() : voice.GetPan());
 						const auto volume(numVoiceEnds > 1ull ? voiceEnd.GetVolume() : voice.GetVolume());
 						const auto fineTune(numVoiceEnds > 1ull ? voiceEnd.GetFineTune() : voice.GetFineTune());
@@ -87,11 +87,11 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						// Account for the odd 'multisample' stuff
 						if(numVoiceEnds > 1ull)
 						{
-							if(zoneRange.first == 0x00) { zoneRange.first = voice.GetZoneRange().first; }
-							if (zoneRange.second == 0x7f) { zoneRange.second = voice.GetZoneRange().second; }
+							if(keyZoneRange.GetLow() == 0x00) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
+							if (keyZoneRange.GetHigh() == 0x7f) { keyZoneRange.SetHigh(voice.GetKeyZoneRange().GetHigh()); }
 						}
 
-						presetResult.AddVoice(E4VoiceResult(voice, std::move(zoneRange), voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), 
+						presetResult.AddVoice(E4VoiceResult(voice, keyZoneRange, voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), 
 							volume, pan, fineTune, voice.GetCords()));
 					}
 
@@ -166,7 +166,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) != 0) { return false; }
 
 		E4EMSt emst;
-		reader.readTypeAtLocation(&emst, lastLoc + 4ull, EMST_DATA_READ_SIZE);
+		reader.readTypeAtLocation(&emst, lastLoc + 8ull, EMST_DATA_READ_SIZE);
 
 		outResult.SetCurrentPreset(emst.GetCurrentPreset());
 	}
