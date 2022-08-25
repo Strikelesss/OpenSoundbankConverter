@@ -284,7 +284,7 @@ private:
 };
 
 constexpr auto TOTAL_PRESET_DATA_SIZE = 82ull;
-constexpr auto PRESET_DATA_READ_SIZE = 26ull;
+constexpr auto PRESET_DATA_READ_SIZE = 58ull;
 
 struct E4Sequence final
 {
@@ -299,8 +299,8 @@ constexpr auto SEQUENCE_DATA_READ_SIZE = 16ull;
 struct E4MIDIChannel final
 {
 private:
-	uint8_t m_volume = 127ui8;
-	uint8_t m_pan = 0ui8;
+	int8_t m_volume = 127i8;
+	int8_t m_pan = 0i8;
 	std::array<uint8_t, 3> m_possibleRedundant1{};
 	uint8_t m_aux = 255ui8; // 255 = on
 	std::array<uint8_t, 16> m_controllers{};
