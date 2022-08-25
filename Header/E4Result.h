@@ -88,13 +88,15 @@ private:
 
 struct E4PresetResult final
 {
-	explicit E4PresetResult(std::string&& name) : m_name(std::move(name)) {}
+	explicit E4PresetResult(const uint16_t index, std::string&& name) : m_index(index), m_name(std::move(name)) {}
 
 	void AddVoice(E4VoiceResult&& voice) { m_voices.emplace_back(std::move(voice)); }
 	[[nodiscard]] const std::vector<E4VoiceResult>& GetVoices() const { return m_voices; }
 	[[nodiscard]] const std::string& GetName() const { return m_name; }
+	[[nodiscard]] uint16_t GetIndex() const { return m_index; }
 
 private:
+	uint16_t m_index = 0ui16;
 	std::string m_name;
 	std::vector<E4VoiceResult> m_voices{};
 };

@@ -165,7 +165,7 @@ private:
 	uint8_t m_src = 0ui8;
 	uint8_t m_dst = 0ui8;
 	int8_t m_amt = 0i8;
-	[[maybe_unused]] uint8_t m_possibleRedundant1 = 0ui8;
+	uint8_t m_possibleRedundant1 = 0ui8;
 };
 
 struct E4Voice final
@@ -256,7 +256,7 @@ private:
 	std::array<E4Cord, 24> m_cords{E4Cord(VEL_POLARITY_LESS, AMP_VOLUME, 0ui8), E4Cord(PITCH_WHEEL, PITCH, 1ui8), E4Cord(LFO1_POLARITY_CENTER, PITCH, 0ui8), E4Cord(MOD_WHEEL, CORD_3_AMT, 6ui8),
 		E4Cord(VEL_POLARITY_LESS, FILTER_FREQ, 0ui8), E4Cord(FILTER_ENV_POLARITY_POS, FILTER_FREQ, 0ui8), E4Cord(KEY_POLARITY_CENTER, FILTER_FREQ, 0ui8), E4Cord(FOOTSWITCH_1, KEY_SUSTAIN, 127ui8)}; // 284
 
-	std::array<int8_t, 4> m_padding{}; // 288
+	int32_t m_padding = 0u; // 288
 };
 
 // In the file, excluding the 'end' size of VOICE_END_DATA_SIZE
@@ -266,13 +266,15 @@ constexpr auto VOICE_DATA_READ_SIZE = 284ull;
 
 struct E4Preset final
 {
-	[[nodiscard]] std::string GetPresetName() const { return std::string(m_name); }
+	[[nodiscard]] uint16_t GetIndex() const { return _byteswap_ushort(m_index); }
+	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
 	[[nodiscard]] uint16_t GetNumVoices() const { return _byteswap_ushort(m_numVoices); }
-	[[nodiscard]] uint16_t GetPresetDataSize() const { return _byteswap_ushort(m_presetDataSize); }
+	[[nodiscard]] uint16_t GetDataSize() const { return _byteswap_ushort(m_dataSize); }
 
 private:
+	uint16_t m_index = 0ui16; // requires byteswap
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
-	uint16_t m_presetDataSize = 0ui16; // generally 82 // requires byteswap
+	uint16_t m_dataSize = 0ui16; // generally 82 // requires byteswap
 	uint16_t m_numVoices = 0ui16; // requires byteswap
 	std::array<int8_t, 4> m_possibleRedundant1{};
 	int8_t m_transpose = 0i8;
@@ -280,7 +282,7 @@ private:
 	std::array<int8_t, 28> m_possibleRedundant2{};
 	std::array<uint8_t, 4> m_controllers{255ui8, 255ui8, 255ui8, 255ui8};
 
-	[[maybe_unused]] std::array<int8_t, 6> m_padding{};
+	int32_t m_padding = 0u;
 };
 
 constexpr auto TOTAL_PRESET_DATA_SIZE = 82ull;

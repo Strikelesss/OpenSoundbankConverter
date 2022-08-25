@@ -67,7 +67,6 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 		sf2.NewSample(e4Sample.GetName(), e4Sample.GetData(), e4Sample.GetLoopStart(), e4Sample.GetLoopEnd(), e4Sample.GetSampleRate(), 0ui8, 0i8);
 	}
 
-	uint16_t presetIndex(0ui16);
 	for(const auto& preset : e4b.GetPresets())
 	{
 		std::vector<sf2cute::SFPresetZone> presetZones;
@@ -110,12 +109,6 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			// Envelope
 			// TODO: plot points from E4B onto an ADSR envelope and grab the time, since the time is inaccurate below (a binary value of 126 could be 2.1 sec, when it normally is say 80 sec)
 
-			/*
-			 * Amp Env
-			 * NOTE: for Delay we use the one provided in 'Key' but in reality it should be Attack1Sec
-			 * Generally Attack1Sec is only used for Filter Env, so that is used there
-			 */
-
 			const auto& ampEnv(voice.GetAmpEnv());
 			const auto ampDelaySec(SF2Converter::secToTimecent(voice.GetKeyDelay()));
 			if (ampDelaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDelayVolEnv, ampDelaySec)); }
@@ -126,7 +119,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			const auto ampHoldSec(SF2Converter::secToTimecent(ampEnv.GetDecay1Sec()));
 			if (ampHoldSec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kHoldVolEnv, ampHoldSec)); }
 
-			// Sustain Level is expressed in dB for vol env, and is also opposite because of SF2
+			// Sustain Level is expressed in dB for Amp Env, and is also opposite because of SF2
 			const auto ampSustainLevel(ampEnv.GetDecay2Level());
 			if(ampSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, static_cast<int16_t>((-(ampSustainLevel / 100.f * 144.f) + 144.f) * 10.f))); }
 
@@ -373,8 +366,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 		const auto& presetName(preset.GetName());
 		presetZones.emplace_back(sf2.NewInstrument(presetName, instrumentZones));
-		const std::shared_ptr sfPreset(sf2.NewPreset(presetName, presetIndex, 0ui16, presetZones));
-		++presetIndex;
+		const std::shared_ptr sfPreset(sf2.NewPreset(presetName, preset.GetIndex(), 0ui16, presetZones));
 	}
 
 	try 
@@ -479,7 +471,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 							{
 								if (writer.writeType(&tocSize))
 								{
-									constexpr uint16_t redundant16(0ui16);
+									constexpr uint16_t redundantChunkVal(0ui16);
 
 									/*
 									 * Chunks
@@ -493,14 +485,16 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 											const uint32_t presetChunkLen(_byteswap_ulong(TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 											if (writer.writeType(&presetChunkLen))
 											{
-												presetChunkLocations[i] = writer.GetWritePos();
+												const auto presetIndex(preset.preset);
+												presetChunkLocations[presetIndex] = writer.GetWritePos();
 
+												// Set to 0 since we go back to it below
 												constexpr uint32_t presetChunkLoc(0u);
 												if (writer.writeType(&presetChunkLoc))
 												{
-													const auto presetNum(_byteswap_ushort(static_cast<uint16_t>(i)));
-													if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN)
-														&& writer.writeType(&redundant16)) { continue; }
+													const auto presetIndexBS(_byteswap_ushort(presetIndex));
+													if (writer.writeType(&presetIndexBS) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), 
+														E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundantChunkVal)) { continue; }
 												}
 											}
 										}
@@ -522,12 +516,13 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 												{
 													sampleChunkLocations[sampleIndex] = writer.GetWritePos();
 
-													constexpr uint32_t presetChunkLoc(0u);
-													if (writer.writeType(&presetChunkLoc))
+													// Set to 0 since we go back to it below
+													constexpr uint32_t sampleChunkLoc(0u);
+													if (writer.writeType(&sampleChunkLoc))
 													{
 														const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
 														if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName).c_str(),
-															E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundant16)) { ++sampleIndex; continue; }
+															E4BVariables::EOS_E4_MAX_NAME_LEN) && writer.writeType(&redundantChunkVal)) { ++sampleIndex; continue; }
 													}
 												}
 											}
@@ -545,14 +540,15 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 
 									for (int i(0); i < numPresets; ++i)
 									{
+										const auto& preset(sf2->presets[i]);
+										const auto presetIndex(preset.preset);
 										const auto currentPos(_byteswap_ulong(static_cast<uint32_t>(writer.GetWritePos())));
-										if (writer.writeTypeAtLocation(&currentPos, presetChunkLocations[i]) && writer.writeType(E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()))
+										if (writer.writeTypeAtLocation(&currentPos, presetChunkLocations[presetIndex]) && writer.writeType(E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()))
 										{
-											const auto preset(sf2->presets[i]);
 											uint32_t presetChunkLen(_byteswap_ulong(sizeof(uint16_t) + TOTAL_PRESET_DATA_SIZE + preset.regionNum * (VOICE_DATA_SIZE + VOICE_END_DATA_SIZE)));
 											if (writer.writeType(&presetChunkLen))
 											{
-												const auto presetNum(_byteswap_ushort(static_cast<uint16_t>(i)));
+												const auto presetNum(_byteswap_ushort(presetIndex));
 												if (writer.writeType(&presetNum) && writer.writeType(ConvertNameToEmuName(preset.presetName).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
 												{
 													const auto presetDataSize(_byteswap_ushort(static_cast<uint16_t>(TOTAL_PRESET_DATA_SIZE)));

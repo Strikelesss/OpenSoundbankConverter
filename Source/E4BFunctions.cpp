@@ -59,12 +59,12 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E4_PRESET_TAG.data(), E4BVariables::EOS_E4_PRESET_TAG.length()) == 0)
 		{
 			E4Preset preset;
-			reader.readTypeAtLocation(&preset, chunkLocationWithOffset, PRESET_DATA_READ_SIZE);
+			reader.readTypeAtLocation(&preset, chunkLocationWithOffset - 2ull, PRESET_DATA_READ_SIZE);
 
-			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetPresetName())));
+			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
 			if (preset.GetNumVoices() > 0u)
 			{
-				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetPresetDataSize()));
+				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetDataSize()));
 
 				for (uint32_t j(1u); j <= preset.GetNumVoices(); ++j)
 				{
@@ -116,14 +116,14 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
 
 				// 0 = ???
-				// 1 = start of left channel (SAMPLE_DATA_READ_SIZE)
+				// 1 = start of left channel (TOTAL_SAMPLE_DATA_READ_SIZE)
 				// 2 = start of right channel (0 if mono)
-				// 3 = last sample of left channel (lastLoc - wavStart - 2 + SAMPLE_DATA_READ_SIZE)
-				// 4 = last sample of right channel (3 - SAMPLE_DATA_READ_SIZE)
-				// 5 = loop start (* 2 + SAMPLE_DATA_READ_SIZE)
-				// 6 = 5 - SAMPLE_DATA_READ_SIZE
-				// 7 = loop end (* 2 + SAMPLE_DATA_READ_SIZE)
-				// 8 = 7 - SAMPLE_DATA_READ_SIZE
+				// 3 = last sample of left channel (lastLoc - wavStart - 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
+				// 4 = last sample of right channel (3 - TOTAL_SAMPLE_DATA_READ_SIZE)
+				// 5 = loop start (* 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
+				// 6 = 5 - TOTAL_SAMPLE_DATA_READ_SIZE
+				// 7 = loop end (* 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
+				// 8 = 7 - TOTAL_SAMPLE_DATA_READ_SIZE
 
 				uint32_t loopStart(0u);
 				uint32_t loopEnd(0u);
