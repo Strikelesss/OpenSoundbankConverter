@@ -18,9 +18,9 @@ int16_t VoiceDefinitions::hertzToCents(const double hz)
 	return static_cast<int16_t>(std::round(std::log(hz / 8.176) / std::log(2.) * 1200.));
 }
 
-std::string_view VoiceDefinitions::GetMIDINoteFromKey(const uint32_t key)
+std::string_view VoiceDefinitions::GetMIDINoteFromKey(const uint8_t key)
 {
-	if(key > 127u) { return "null"; }
+	if(key > 127ui8) { return "null"; }
 	return E4BVariables::midiKeyNotes[key];
 }
 

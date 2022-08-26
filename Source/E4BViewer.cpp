@@ -10,6 +10,9 @@
 #include <ShlObj_core.h>
 #include <tchar.h>
 
+#include "Header/BinaryWriter.h"
+#include "Header/VoiceDefinitions.h"
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 bool E4BViewer::CreateResources()
@@ -71,6 +74,8 @@ void E4BViewer::Render()
 	ImGui::SetNextWindowSize(windowSize);
 	if(ImGui::Begin("##main", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar))
 	{
+		if(!m_vdMenuOpen) { m_vdTempResult.Clear(); }
+
 		if(ImGui::BeginTabBar("##maintabbar"))
 		{
 			if(ImGui::BeginTabItem("Converter"))
@@ -79,18 +84,165 @@ void E4BViewer::Render()
 
 				if(ImGui::BeginListBox("##banks", ImVec2(windowSize.x * 0.85f, windowSize.y * 0.75f)))
 				{
+					uint32_t index(0u);
 					for(const auto& file : m_bankFiles)
 					{
 						if(exists(file))
 						{
-							if(ImGui::Selectable(file.string().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
+							const auto fileStr(file.string());
+							ImGui::Selectable(fileStr.c_str());
+
+							const auto popupRCMenuName("##filePopupRCMenu" + std::to_string(index));
+							ImGui::OpenPopupOnItemClick(popupRCMenuName.c_str());
+
+							const auto popupVDMenuName("##filePopupVDMenu" + std::to_string(index));
+							bool tempOpenVDMenu(false);
+							if (ImGui::BeginPopup(popupRCMenuName.c_str()))
 							{
-								if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+								ImGui::BeginDisabled(!strCI(file.extension().string(), ".E4B"));
+
+								if (ImGui::Button("View Details"))
 								{
-									// TODO: open popup to remove
-									break;
+									ImGui::CloseCurrentPopup();
+
+									BinaryReader reader;
+									if (reader.readFile(file))
+									{
+										if (E4BFunctions::ProcessE4BFile(reader, m_vdTempResult)) { tempOpenVDMenu = true; m_vdMenuOpen = true; }
+									}
 								}
+
+								ImGui::EndDisabled();
+
+								if (ImGui::Button("Remove"))
+								{
+									m_bankFiles.erase(std::ranges::remove(m_bankFiles, file).begin(), m_bankFiles.end());
+									ImGui::CloseCurrentPopup();
+								}
+
+								ImGui::EndPopup();
 							}
+
+							if(tempOpenVDMenu) { ImGui::OpenPopup(popupVDMenuName.c_str()); ImGui::SetNextWindowSize(ImVec2(windowSize.x * 0.85f, windowSize.y * 0.85f)); }
+
+							if (ImGui::BeginPopupModal(popupVDMenuName.c_str(), &m_vdMenuOpen))
+							{
+								if (ImGui::TreeNode("Presets"))
+								{
+									int32_t presetIndex(0u);
+									for(auto& preset : m_vdTempResult.GetPresets())
+									{
+										ImGui::PushID(presetIndex);
+										if (ImGui::TreeNode(preset.GetName().data()))
+										{
+											int32_t voiceIndex(1u);
+											for(const auto& voice : preset.GetVoices())
+											{
+												ImGui::PushID(voiceIndex);
+												if (ImGui::TreeNode(std::string("Voice #" + std::to_string(voiceIndex)).c_str()))
+												{
+													const auto& zoneRange(voice.GetKeyZoneRange());
+													const auto& velRange(voice.GetVelocityRange());
+													ImGui::Text("Original Key: %s", VoiceDefinitions::GetMIDINoteFromKey(voice.GetOriginalKey()).data());
+													ImGui::Text("Zone Range: %s-%s", VoiceDefinitions::GetMIDINoteFromKey(zoneRange.GetLow()).data(), VoiceDefinitions::GetMIDINoteFromKey(zoneRange.GetHigh()).data());
+													ImGui::Text("Velocity Range: %u-%u", velRange.GetLow(), velRange.GetHigh());
+													ImGui::Text("Filter Type: %s", voice.GetFilterType().data());
+													ImGui::Text("Filter Frequency: %d", voice.GetFilterFrequency());
+													ImGui::Text("Pan: %d", voice.GetPan());
+													ImGui::Text("Volume: %d", voice.GetVolume());
+													ImGui::Text("Fine Tune: %f", voice.GetFineTune());
+
+													ImGui::Text("Release Env: %f", voice.GetAmpEnv().GetRelease1Sec());
+
+													ImGui::TreePop();
+												}
+
+												ImGui::PopID();
+												++voiceIndex;
+											}
+
+											ImGui::TreePop();
+										}
+
+										ImGui::PopID();
+										++presetIndex;
+									}
+
+									ImGui::TreePop();
+								}
+
+								if (ImGui::TreeNode("Samples"))
+								{
+									int32_t sampleIndex(0u);
+									for(const auto& sample : m_vdTempResult.GetSamples())
+									{
+										ImGui::PushID(sampleIndex);
+										if (ImGui::TreeNode(sample.GetName().c_str()))
+										{
+											ImGui::Text("Sample Rate: %u", sample.GetSampleRate());
+											ImGui::Text("Loop Start: %u", sample.GetLoopStart());
+											ImGui::Text("Loop End: %u", sample.GetLoopEnd());
+											ImGui::Text("Loop: %d", sample.IsLooping());
+											ImGui::Text("Release: %d", sample.IsReleasing());
+											ImGui::Text("Sample Size: %zd", sample.GetData().size());
+
+											ImGui::TreePop();
+										}
+
+										ImGui::PopID();
+										++sampleIndex;
+									}
+
+									ImGui::TreePop();
+								}
+
+								if (ImGui::TreeNode("Sequences"))
+								{
+									int32_t seqIndex(0u);
+									for(const auto& seq : m_vdTempResult.GetSequences())
+									{
+										ImGui::PushID(seqIndex);
+
+										if(ImGui::TreeNode(seq.GetName().c_str()))
+										{
+											if (ImGui::Button("Extract Sequence"))
+											{
+												auto seqPathTemp(seq.GetName());
+												seqPathTemp.resize(MAX_PATH);
+
+												OPENFILENAMEA ofn{};
+												ofn.lStructSize = sizeof(ofn);
+												ofn.hwndOwner = nullptr;
+												ofn.lpstrFilter = ".mid";
+												ofn.lpstrFile = seqPathTemp.data();
+												ofn.nMaxFile = MAX_PATH;
+												ofn.Flags = OFN_EXPLORER;
+												ofn.lpstrDefExt = "mid";
+
+												if (GetSaveFileNameA(&ofn))
+												{
+													std::filesystem::path seqPath(seqPathTemp);
+													BinaryWriter writer(seqPath);
+
+													const auto& seqData(seq.GetMIDISeqData());
+													if(writer.writeType(seqData.data(), seqData.size())) { if(writer.finishWriting()) { OutputDebugStringA("Successfully extracted sequence! \n"); } }
+												}
+											}
+
+											ImGui::TreePop();
+										}
+
+										ImGui::PopID();
+										++seqIndex;
+									}
+
+									ImGui::TreePop();
+								}
+
+								ImGui::EndPopup();
+							}
+
+							++index;
 						}
 					}
 
@@ -207,22 +359,18 @@ void E4BViewer::Render()
 							{
 								if (exists(file))
 								{
-									const auto ext(file.extension().string());
-									if (strCI(ext, ".E4B"))
+									m_threadPool.queueFunc([&]
 									{
-										m_threadPool.queueFunc([&]
+										BinaryReader reader;
+										if(reader.readFile(file))
 										{
 											E4Result tempResult;
-
-											BinaryReader reader;
-											reader.readFile(file);
-
 											if (E4BFunctions::ProcessE4BFile(reader, tempResult))
 											{
 												E4BFunctions::IsAccountingForCords(tempResult);
 											}
-										});
-									}
+										}
+									});
 								}
 							}
 						}
@@ -278,17 +426,17 @@ void E4BViewer::Render()
 									{
 										m_threadPool.queueFunc([&, file, options]
 										{
-											E4Result tempResult;
-
 											BinaryReader reader;
-											reader.readFile(file);
-
-											if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+											if (reader.readFile(file))
 											{
-												constexpr BankConverter converter;
-												if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+												E4Result tempResult;
+												if (E4BFunctions::ProcessE4BFile(reader, tempResult))
 												{
-													OutputDebugStringA("Successfully converted to SF2! \n");
+													constexpr BankConverter converter;
+													if (converter.ConvertE4BToSF2(tempResult, file.filename().replace_extension("").string(), options))
+													{
+														OutputDebugStringA("Successfully converted to SF2! \n");
+													}
 												}
 											}
 										});

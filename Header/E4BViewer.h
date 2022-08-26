@@ -1,5 +1,6 @@
 #pragma once
-#include "Header/ThreadPool.h"
+#include "E4Result.h"
+#include "ThreadPool.h"
 #include <array>
 #include <d3d11.h>
 #include <filesystem>
@@ -36,8 +37,10 @@ namespace E4BViewer
 
 	// UI Specific
 
+	inline E4Result m_vdTempResult;
 	inline std::vector<std::filesystem::path> m_bankFiles{};
 	inline std::string m_conversionType;
 	inline bool m_flipPan = false, m_useConverterSpecificData = true, m_isChickenTranslatorFile = false;
 	inline bool m_queueClear = false;
+	inline bool m_vdMenuOpen = false;
 }

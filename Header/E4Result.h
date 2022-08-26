@@ -5,9 +5,9 @@
 
 struct E4VoiceResult final
 {
-	explicit E4VoiceResult(const E4Voice& voice, const E4VoiceNoteData& keyZoneRange, const uint8_t originalKey, const uint8_t sampleIndex, const int8_t volume, const int8_t pan, const double fineTune, const std::array<E4Cord, 24>& cords) : m_keyData(keyZoneRange), m_velData(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()), m_fineTune(fineTune),
+	explicit E4VoiceResult(const E4Voice& voice, const E4VoiceNoteData& keyZoneRange, const uint8_t originalKey, const uint8_t sampleIndex, const int8_t volume, const int8_t pan, const double fineTune) : m_keyData(keyZoneRange), m_velData(voice.GetVelocityRange()), m_filterType(voice.GetFilterType()), m_fineTune(fineTune),
 		m_coarseTune(voice.GetCoarseTune()), m_filterQ(voice.GetFilterQ()), m_volume(volume), m_pan(pan), m_filterFrequency(voice.GetFilterFrequency()), m_chorusAmount(voice.GetChorusAmount()), m_chorusWidth(voice.GetChorusWidth()), m_originalKey(originalKey), m_sampleIndex(sampleIndex),
-		m_keyDelay(voice.GetKeyDelay()), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()), m_lfo1(voice.GetLFO1()), m_lfo2(voice.GetLFO2()), m_cords(cords) {}
+		m_keyDelay(voice.GetKeyDelay()), m_ampEnv(voice.GetAmpEnv()), m_filterEnv(voice.GetFilterEnv()), m_auxEnv(voice.GetAuxEnv()), m_lfo1(voice.GetLFO1()), m_lfo2(voice.GetLFO2()), m_cords(voice.GetCords()) {}
 
 	[[nodiscard]] uint8_t GetSampleIndex() const { return m_sampleIndex; }
 	[[nodiscard]] const E4VoiceNoteData& GetKeyZoneRange() const { return m_keyData; }
@@ -103,7 +103,7 @@ private:
 
 struct E4SequenceResult final
 {
-	explicit E4SequenceResult(std::string name, std::vector<char>&& data) : m_name(std::move(name)), m_midiSeqData(std::move(data)) {}
+	explicit E4SequenceResult(std::string&& name, std::vector<char>&& data) : m_name(std::move(name)), m_midiSeqData(std::move(data)) {}
 	[[nodiscard]] const std::vector<char>& GetMIDISeqData() const { return m_midiSeqData; }
 	[[nodiscard]] const std::string& GetName() const { return m_name; }
 

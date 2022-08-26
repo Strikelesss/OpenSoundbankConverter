@@ -13,7 +13,7 @@ namespace VoiceDefinitions
 	double centsToHertz(int16_t cents);
 	int16_t hertzToCents(double hz);
 
-	[[nodiscard]] std::string_view GetMIDINoteFromKey(uint32_t key);
+	[[nodiscard]] std::string_view GetMIDINoteFromKey(uint8_t key);
 	[[nodiscard]] std::string_view GetFilterTypeFromByte(uint8_t b);
 	[[nodiscard]] uint16_t ConvertByteToFilterFrequency(uint8_t b);
 	[[nodiscard]] uint8_t ConvertFilterFrequencyToByte(uint16_t freq);

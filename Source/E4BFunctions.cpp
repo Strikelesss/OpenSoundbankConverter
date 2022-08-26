@@ -62,11 +62,12 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			reader.readTypeAtLocation(&preset, chunkLocationWithOffset - 2ull, PRESET_DATA_READ_SIZE);
 
 			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
-			if (preset.GetNumVoices() > 0u)
+			const auto numVoices(preset.GetNumVoices());
+			if (numVoices > 0ui16)
 			{
 				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetDataSize()));
 
-				for (uint32_t j(1u); j <= preset.GetNumVoices(); ++j)
+				for (uint16_t j(0ui16); j < numVoices; ++j)
 				{
 					E4Voice voice;
 					reader.readTypeAtLocation(&voice, voicePos, VOICE_DATA_READ_SIZE);
@@ -85,14 +86,14 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						const auto fineTune(numVoiceEnds > 1ull ? voiceEnd.GetFineTune() : voice.GetFineTune());
 
 						// Account for the odd 'multisample' stuff
-						if(numVoiceEnds > 1ull)
+						if (numVoiceEnds > 1ull)
 						{
-							if(keyZoneRange.GetLow() == 0x00) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
-							if (keyZoneRange.GetHigh() == 0x7f) { keyZoneRange.SetHigh(voice.GetKeyZoneRange().GetHigh()); }
+							if (keyZoneRange.GetLow() == 0ui8) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
+							if (keyZoneRange.GetHigh() == 127ui8) { keyZoneRange.SetHigh(voice.GetKeyZoneRange().GetHigh()); }
 						}
 
-						presetResult.AddVoice(E4VoiceResult(voice, keyZoneRange, voiceEnd.GetOriginalKey(), voiceEnd.GetSampleIndex(), 
-							volume, pan, fineTune, voice.GetCords()));
+						presetResult.AddVoice(E4VoiceResult(voice, keyZoneRange, voiceEnd.GetOriginalKey(), 
+							voiceEnd.GetSampleIndex(), volume, pan, fineTune));
 					}
 
 					voicePos += static_cast<uint64_t>(voiceSize);
