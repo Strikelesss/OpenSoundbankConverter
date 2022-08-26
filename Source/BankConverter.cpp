@@ -355,7 +355,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if(options.m_useConverterSpecificData)
 			{
 				const auto chorusWidth(voice.GetChorusWidth());
-				if (chorusWidth > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, static_cast<int16_t>(chorusWidth))); }
+				if (chorusWidth > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, static_cast<int16_t>(chorusWidth * 10.f))); }
 
 				const auto attenuationSign(voiceVolBefore > 0 ? 1 : voiceVolBefore < 0 ? -1 : 0);
 				if(attenuationSign != 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused2, static_cast<int16_t>(attenuationSign))); }
@@ -615,7 +615,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto filterSustain(filterEnv.sustain * 100.f);
 
 																			float chorusAmount(region.chorusEffectsSend / 10.f);
-																			auto chorusWidth(static_cast<float>(region.unused5));
+																			auto chorusWidth(0.f);
 																			const auto LFO1Freq(VoiceDefinitions::centsToHertz(static_cast<int16_t>(region.freqModLFO)));
 																			const auto LFO1Delay(static_cast<double>(region.delayModLFO));
 
@@ -623,7 +623,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			if (canUseConverterSpecificData)
 																			{
 																				lfo1 = E4LFO(LFO1Freq, static_cast<uint8_t>(region.unused3), LFO1Delay, region.unused4);
-																				chorusWidth = static_cast<float>(region.unused5);
+																				chorusWidth = region.unused5 / 10.f;
 																			}
 																			else
 																			{

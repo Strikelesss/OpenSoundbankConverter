@@ -39,7 +39,7 @@ namespace VoiceDefinitions
 	[[nodiscard]] uint8_t GetByteFromSecRelease(double sec);
 
 	[[nodiscard]] float GetChorusWidthPercent(uint8_t value);
-	[[nodiscard]] constexpr uint8_t ConvertChorusWidthToByte(const float value) { return static_cast<uint8_t>(value * 128.f / 100.f + 128.f); }
+	[[nodiscard]] uint8_t ConvertChorusWidthToByte(float value);
 	[[nodiscard]] int8_t ConvertPercentToByteF(float value);
 
 	template<typename T>

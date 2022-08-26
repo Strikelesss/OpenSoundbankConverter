@@ -318,7 +318,9 @@ struct tsf_region
 	unsigned int sample_rate;
 	unsigned char lokey, hikey, lovel, hivel;
 	unsigned int group, offset, end, loop_start, loop_end;
-	int transpose, tune, pitch_keycenter, unused5, pitch_keytrack;
+	int transpose, tune, pitch_keycenter;
+	float unused5;
+	int pitch_keytrack;
 	float attenuation, pan;
 	int unused2, unused3, unused4;
 	struct tsf_envelope ampenv, modenv;
@@ -508,7 +510,7 @@ static void tsf_region_operator(struct tsf_region* region, tsf_u16 genOper, unio
 		{ GEN_INT                          , _TSFREGIONOFFSET(         int, pitch_keytrack       ) }, //56 ScaleTuning
 		{ GEN_GROUP                        , _TSFREGIONOFFSET(unsigned int, group                ) }, //57 ExclusiveClass
 		{ GEN_KEYCENTER                    , _TSFREGIONOFFSET(         int, pitch_keycenter      ) }, //58 OverridingRootKey
-		{ GEN_INT   | GEN_INT_LIMIT960     , _TSFREGIONOFFSET(         int, unused5      ) }, // Unused Custom
+		{ GEN_FLOAT | GEN_FLOAT_MAX1000     , _TSFREGIONOFFSET(float, unused5      ) }, // Unused Custom
 	};
 	#undef _TSFREGIONOFFSET
 	#undef _TSFREGIONENVOFFSET

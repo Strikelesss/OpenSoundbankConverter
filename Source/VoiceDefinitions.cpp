@@ -48,26 +48,48 @@ uint8_t VoiceDefinitions::ConvertFilterFrequencyToByte(const uint16_t freq)
 	return static_cast<uint8_t>(std::round((std::log(freq) - MIN_FREQUENCY_57) / (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) * 255.));
 }
 
+// [-100, 100] to [0, 64]
 int8_t VoiceDefinitions::ConvertFineTuneToByte(const double fineTune)
 {
 	return static_cast<int8_t>((fineTune - 100.) / 1.5625 + 64.);
 }
 
+// [0, 64] to [-100, 100]
 double VoiceDefinitions::ConvertByteToFineTune(const int8_t b)
 {
 	return MathFunctions::round_d_places((static_cast<double>(b) - 64.) * 1.5625 + 100., 2u);
 }
 
+// [0, 127] to [0.08, 18.01]
 double VoiceDefinitions::GetLFORateFromByte(const uint8_t b)
 {
 	constexpr auto a1(1.64054); constexpr auto b1(1.01973); constexpr auto c1(-1.57702);
 	return a1 * std::pow(b1, b) + c1;
 }
 
+// [0.08, 18.01] to [0, 127]
 uint8_t VoiceDefinitions::GetByteFromLFORate(const double rate)
 {
 	constexpr auto a1(1.64054); constexpr auto b1(1.01973); constexpr auto c1(-1.57702);
 	return static_cast<uint8_t>(std::round(std::log((rate - c1) / a1) / std::log(b1)));
+}
+
+// [-128, 0] to [0%, 100%]
+float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)
+{
+	return MathFunctions::clamp_f(MathFunctions::round_f_places(std::abs((static_cast<float>(value) - 128.f) * 0.78125f), 2u), 0.f, 100.f);
+}
+
+// [0%, 100%] to [-128, 0]
+uint8_t VoiceDefinitions::ConvertChorusWidthToByte(const float value)
+{
+	return static_cast<int8_t>(value / 0.78125f + 128.f);
+}
+
+// [0%, 100%] to [0, 127]
+int8_t VoiceDefinitions::ConvertPercentToByteF(const float value)
+{
+	return static_cast<int8_t>(std::roundf(value * 127.f / 100.f));
 }
 
 double VoiceDefinitions::GetLFODelayFromByte(const uint8_t b)
@@ -120,15 +142,4 @@ double VoiceDefinitions::GetTimeFromCurveRelease(const uint8_t b)
 uint8_t VoiceDefinitions::GetByteFromSecRelease(const double sec)
 {
 	return static_cast<uint8_t>(std::abs(std::log2(sec / 1.3) / 0.1 + 59.));
-}
-
-// TODO: figure out the correct way of converting [-128, 0] to [0%, 100%]
-float VoiceDefinitions::GetChorusWidthPercent(const uint8_t value)
-{
-	return MathFunctions::clamp_f(MathFunctions::round_f_places(ConvertByteToPercentF(static_cast<uint8_t>(value + 128ui8)), 2u), 0.f, 100.f);
-}
-
-int8_t VoiceDefinitions::ConvertPercentToByteF(const float value)
-{
-	return static_cast<int8_t>(std::roundf(value * 127.f / 100.f));
 }

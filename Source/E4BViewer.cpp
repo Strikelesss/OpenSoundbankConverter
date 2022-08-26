@@ -3,15 +3,14 @@
 #include "backends/imgui_impl_win32.h"
 #include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
+#include "Header/BinaryWriter.h"
 #include "Header/E4BFunctions.h"
 #include "Header/E4Result.h"
 #include "Header/Logger.h"
+#include "Header/VoiceDefinitions.h"
 #include <fstream>
 #include <ShlObj_core.h>
 #include <tchar.h>
-
-#include "Header/BinaryWriter.h"
-#include "Header/VoiceDefinitions.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
