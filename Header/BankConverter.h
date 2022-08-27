@@ -5,7 +5,7 @@ struct E4Result;
 
 struct ConverterOptions final
 {
-	ConverterOptions() = default;
+	ConverterOptions() noexcept = default;
 	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool isChickenTranslatorFile)
 		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_isChickenTranslatorFile(isChickenTranslatorFile) {}
 
@@ -33,6 +33,7 @@ namespace SF2Converter
 	constexpr auto SF2_FILTER_MAX_FREQ = 13500i16;
 	constexpr auto MIN_MAX_LFO1_TO_VOLUME = 15.f;
 	constexpr auto MAX_FILTER_FREQ_HZ_CORDS(12000.f);
+	constexpr auto MAX_SUSTAIN_VOL_ENV = 144.f;
 
 	[[nodiscard]] int16_t filterFreqPercentToCents(float filterFreq);
 	[[nodiscard]] float centsToFilterFreqPercent(int16_t cents);

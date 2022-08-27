@@ -1,16 +1,5 @@
 #include "Header/ThreadPool.h"
 
-ThreadPool::ThreadPool(const unsigned int numThreads)
-{
-	initialize(numThreads);
-}
-
-ThreadPool::~ThreadPool() noexcept
-{
-	waitForAll();
-	destroyAll();
-}
-
 void ThreadPool::initialize(const unsigned int numThreads)
 {
 	m_prevNumThreads = numThreads;

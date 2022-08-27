@@ -13,7 +13,7 @@ struct BinaryWriter final
 	{
 		if(data == nullptr) { return false; }
 		
-		if ((customSize == 0 && !CanFitWrite(sizeof(T)))
+		if (customSize == 0 && !CanFitWrite(sizeof(T))
 			|| !CanFitWrite(customSize))
 		{
 			const auto size(customSize == 0 ? sizeof(T) : customSize);

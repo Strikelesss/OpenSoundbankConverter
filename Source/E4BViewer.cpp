@@ -34,9 +34,9 @@ bool E4BViewer::CreateResources()
 
 	//const auto createDeviceFlags(D3D11_CREATE_DEVICE_DEBUG);
 	
-	D3D_FEATURE_LEVEL featureLevel;
-	constexpr D3D_FEATURE_LEVEL featureLevelArray[2]{D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0,};
-	if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0u, featureLevelArray, 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
+	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_10_0);
+	constexpr std::array featureLevelArray{D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0,};
+	if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0u, featureLevelArray.data(), 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
 		m_device.GetAddressOf(), &featureLevel, m_deviceContext.GetAddressOf()) != S_OK) { return false; }
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer(nullptr);
@@ -181,8 +181,8 @@ void E4BViewer::Render()
 											ImGui::Text("Sample Rate: %u", sample.GetSampleRate());
 											ImGui::Text("Loop Start: %u", sample.GetLoopStart());
 											ImGui::Text("Loop End: %u", sample.GetLoopEnd());
-											ImGui::Text("Loop: %d", sample.IsLooping());
-											ImGui::Text("Release: %d", sample.IsReleasing());
+											ImGui::Text("Loop: %d", sample.IsLooping() ? 1 : 0);
+											ImGui::Text("Release: %d", sample.IsReleasing() ? 1 : 0);
 											ImGui::Text("Sample Size: %zd", sample.GetData().size());
 
 											ImGui::TreePop();
@@ -210,7 +210,7 @@ void E4BViewer::Render()
 												seqPathTemp.resize(MAX_PATH);
 
 												OPENFILENAMEA ofn{};
-												ofn.lStructSize = sizeof(ofn);
+												ofn.lStructSize = sizeof ofn;
 												ofn.hwndOwner = nullptr;
 												ofn.lpstrFilter = ".mid";
 												ofn.lpstrFile = seqPathTemp.data();
@@ -218,13 +218,13 @@ void E4BViewer::Render()
 												ofn.Flags = OFN_EXPLORER;
 												ofn.lpstrDefExt = "mid";
 
-												if (GetSaveFileNameA(&ofn))
+												if (GetSaveFileNameA(&ofn) != 0)
 												{
 													std::filesystem::path seqPath(seqPathTemp);
 													BinaryWriter writer(seqPath);
 
 													const auto& seqData(seq.GetMIDISeqData());
-													if(writer.writeType(seqData.data(), seqData.size())) { if(writer.finishWriting()) { OutputDebugStringA("Successfully extracted sequence! \n"); } }
+													if(writer.writeType(seqData.data(), seqData.size())) { if(!writer.finishWriting()) { Logger::LogMessage("Failed to extract sequence"); } }
 												}
 											}
 
@@ -295,7 +295,7 @@ void E4BViewer::Render()
 							{
 								const std::wstring_view dir(str);
 								str += dir.length() + 1;
-								while (*str)
+								while (*str != 0u)
 								{
 									const std::wstring_view filename(str);
 									str += filename.length() + 1;
@@ -540,7 +540,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 	const WNDCLASSEX wc{ sizeof(WNDCLASSEX), CS_CLASSDC, E4BViewer::WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("test"), nullptr};
     RegisterClassEx(&wc);
 
-    E4BViewer::m_hwnd = CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, NULL, NULL, wc.hInstance, NULL);
+    E4BViewer::m_hwnd = CreateWindow(wc.lpszClassName, _T("E4B Viewer"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 720, nullptr, nullptr, wc.hInstance, nullptr);
 
     if (!E4BViewer::CreateResources())
     {
@@ -574,7 +574,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
 
 LRESULT E4BViewer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam, const LPARAM lParam)
 {
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) { return true; }
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam) != 0) { return 1; }
 
 	switch (msg)
 	{
@@ -595,7 +595,7 @@ LRESULT E4BViewer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam,
 				if (!FAILED(m_swapchain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer))))
 				{
 					m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv);
-					return true;
+					return 1;
 				}
 			}
 			return 0;

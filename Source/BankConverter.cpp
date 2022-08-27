@@ -41,7 +41,7 @@ int16_t SF2Converter::secToTimecent(const double sec)
 
 bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options) const
 {
-	if(e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty())
+	if (e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty())
 	{
 		Logger::LogMessage("Bank had no samples/presets, or the provided name was empty.");
 		return false;
@@ -62,16 +62,17 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 	sf2.set_comment(std::move(currentPresetStr));
 
-	for(const auto& e4Sample : e4b.GetSamples())
+	for (const auto& e4Sample : e4b.GetSamples())
 	{
+		if(e4Sample.GetNumChannels() != 1u) { Logger::LogMessage("Unable to support stereo samples (sample: %s)", e4Sample.GetName().c_str()); continue; }
 		sf2.NewSample(e4Sample.GetName(), e4Sample.GetData(), e4Sample.GetLoopStart(), e4Sample.GetLoopEnd(), e4Sample.GetSampleRate(), 0ui8, 0i8);
 	}
 
-	for(const auto& preset : e4b.GetPresets())
+	for (const auto& preset : e4b.GetPresets())
 	{
 		std::vector<sf2cute::SFPresetZone> presetZones;
 		std::vector<sf2cute::SFInstrumentZone> instrumentZones;
-		for(const auto& voice : preset.GetVoices())
+		for (const auto& voice : preset.GetVoices())
 		{
 			const auto sampleIndex(e4b.GetSampleIndexMapping().at(voice.GetSampleIndex()));
 			const auto& e4Sample(e4b.GetSamples()[sampleIndex]);
@@ -121,7 +122,8 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// Sustain Level is expressed in dB for Amp Env, and is also opposite because of SF2
 			const auto ampSustainLevel(ampEnv.GetDecay2Level());
-			if(ampSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, static_cast<int16_t>((-(ampSustainLevel / 100.f * 144.f) + 144.f) * 10.f))); }
+			if(ampSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainVolEnv, 
+				VoiceDefinitions::valueToRelPercent(-(ampSustainLevel / 100.f * SF2Converter::MAX_SUSTAIN_VOL_ENV) + SF2Converter::MAX_SUSTAIN_VOL_ENV))); }
 
 			const auto ampDecaySec(SF2Converter::secToTimecent(ampEnv.GetDecay2Sec()));
 			if(ampSustainLevel < 100.f && ampDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayVolEnv, ampDecaySec)); }
@@ -145,7 +147,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 			// Opposite because of SF2
 			const auto filterSustainLevel(filterEnv.GetDecay2Level());
-			if(filterSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, static_cast<int16_t>((-filterSustainLevel + 100.f) * 10.f))); }
+			if(filterSustainLevel < 100.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kSustainModEnv, VoiceDefinitions::valueToRelPercent(-filterSustainLevel + 100.f))); }
 
 			const auto filterDecaySec(SF2Converter::secToTimecent(filterEnv.GetDecay2Sec()));
 			if(filterSustainLevel < 100.f && filterDecaySec != 0i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kDecayModEnv, filterDecaySec)); }
@@ -156,10 +158,10 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			// Filters
 
 			const auto filterFreqCents(VoiceDefinitions::hertzToCents(voice.GetFilterFrequency()));
-			if (filterFreqCents >= 1500i16 && filterFreqCents < 13500i16) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, filterFreqCents)); }
+			if (filterFreqCents >= SF2Converter::SF2_FILTER_MIN_FREQ && filterFreqCents < SF2Converter::SF2_FILTER_MAX_FREQ) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterFc, filterFreqCents)); }
 
 			const auto filterQ(voice.GetFilterQ());
-			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, static_cast<int16_t>(filterQ * 10.f))); }
+			if (filterQ > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kInitialFilterQ, VoiceDefinitions::valueToRelPercent(filterQ))); }
 
 			// LFO
 
@@ -175,7 +177,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 				if (lfo1Shape != 0ui8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused3, lfo1Shape)); }
 
 				const auto lfo1KeySync(voice.GetLFO1().IsKeySync());
-				if(lfo1KeySync) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused4, true)); }
+				if(lfo1KeySync) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused4, 1i16)); }
 			}
 
 			// Cords
@@ -339,7 +341,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			// Amplifier / Oscillator
 
 			const auto pan(options.m_flipPan ? -voice.GetPan() : voice.GetPan());
-			if (pan != 0i8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kPan, static_cast<int16_t>(pan * 10i16))); }
+			if (pan != 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kPan, VoiceDefinitions::valueToRelPercent(pan))); }
 
 			const auto fineTune(voice.GetFineTune());
 			if (fineTune != 0.) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kFineTune, static_cast<int16_t>(std::round(fineTune)))); }
@@ -348,14 +350,14 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 			if (coarseTune != 0i8) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kCoarseTune, coarseTune)); }
 
 			const auto chorusSend(voice.GetChorusAmount());
-			if (chorusSend > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kChorusEffectsSend, static_cast<int16_t>(chorusSend * 10.f))); }
+			if (chorusSend > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kChorusEffectsSend, VoiceDefinitions::valueToRelPercent(chorusSend))); }
 
 			// Other
 
 			if(options.m_useConverterSpecificData)
 			{
 				const auto chorusWidth(voice.GetChorusWidth());
-				if (chorusWidth > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, static_cast<int16_t>(chorusWidth * 10.f))); }
+				if (chorusWidth > 0.f) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused5, VoiceDefinitions::valueToRelPercent(chorusWidth))); }
 
 				const auto attenuationSign(voiceVolBefore > 0 ? 1 : voiceVolBefore < 0 ? -1 : 0);
 				if(attenuationSign != 0) { instrumentZone.SetGenerator(sf2cute::SFGeneratorItem(sf2cute::SFGenerator::kUnused2, static_cast<int16_t>(attenuationSign))); }
@@ -396,8 +398,8 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
 
 // Most early Emulator samplers (ex. Emax II) had a maximum of 8MB for each bank
 // TODO: account for the 8MB maximum by adding multisample for voices that share the same data
-// without multisample: 302 + 302 = 604 bytes
-// with multisample: 328 bytes
+// without multisample: 306 + 306 = 612 bytes
+// with multisample: 306 + 44 = 350 bytes
 bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std::string_view& bankName, const ConverterOptions& options) const
 {
 	if(!bank.empty() && !bankName.empty() && exists(bank))
@@ -571,7 +573,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																		{
 																			const auto& region(preset.regions[j]);
 																			const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-																			auto convertedPan(region.pan / 10.f);
+																			auto convertedPan(VoiceDefinitions::relPercentToValue(region.pan));
 
 																			// Chicken Translator clamps -50 to 50, while EOS uses -64 to 63
 																			if (options.m_isChickenTranslatorFile)
@@ -614,7 +616,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			const auto filterHold(static_cast<double>(filterEnv.hold));
 																			const auto filterSustain(filterEnv.sustain * 100.f);
 
-																			float chorusAmount(region.chorusEffectsSend / 10.f);
+																			float chorusAmount(VoiceDefinitions::relPercentToValue(region.chorusEffectsSend));
 																			auto chorusWidth(0.f);
 																			const auto LFO1Freq(VoiceDefinitions::centsToHertz(static_cast<int16_t>(region.freqModLFO)));
 																			const auto LFO1Delay(static_cast<double>(region.delayModLFO));
@@ -622,8 +624,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																			E4LFO lfo1;
 																			if (canUseConverterSpecificData)
 																			{
-																				lfo1 = E4LFO(LFO1Freq, static_cast<uint8_t>(region.unused3), LFO1Delay, region.unused4);
-																				chorusWidth = region.unused5 / 10.f;
+																				lfo1 = E4LFO(LFO1Freq, static_cast<uint8_t>(region.unused3), LFO1Delay, static_cast<bool>(region.unused4));
+																				chorusWidth = VoiceDefinitions::relPercentToValue(region.unused5);
 																			}
 																			else
 																			{
@@ -826,7 +828,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 									for (const auto& shdr : shdrs)
 									{
 										const uint32_t sampleSize((shdr.end - shdr.start) * static_cast<uint32_t>(sizeof(uint16_t)));
-										if (sampleSize > 0u)
+										if (sampleSize > 0u && shdr.sampleType == 1ui16)
 										{
 											const auto currentPos(_byteswap_ulong(static_cast<uint32_t>(writer.GetWritePos())));
 											if (writer.writeTypeAtLocation(&currentPos, sampleChunkLocations[sampleIndex]) && writer.writeType(E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()))
@@ -845,25 +847,25 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 															lastSampleRight = lastSampleLeft - TOTAL_SAMPLE_DATA_READ_SIZE;
 														}
 
-														uint32_t loopStart(92u);
+														uint32_t loopStart(TOTAL_SAMPLE_DATA_READ_SIZE);
 														if (shdr.startLoop > shdr.start)
 														{
 															loopStart = (shdr.startLoop - shdr.start) * 2u + static_cast<uint32_t>(TOTAL_SAMPLE_DATA_READ_SIZE);
 														}
 
-														uint32_t loopEnd(92u);
+														uint32_t loopEnd(TOTAL_SAMPLE_DATA_READ_SIZE);
 														if (shdr.endLoop > shdr.start)
 														{
 															loopEnd = (shdr.endLoop - shdr.start) * 2u + static_cast<uint32_t>(TOTAL_SAMPLE_DATA_READ_SIZE);
 														}
 
-														uint32_t loopStart2(92u);
+														uint32_t loopStart2(TOTAL_SAMPLE_DATA_READ_SIZE);
 														if (loopStart > TOTAL_SAMPLE_DATA_READ_SIZE)
 														{
 															loopStart2 = loopStart - TOTAL_SAMPLE_DATA_READ_SIZE;
 														}
 
-														uint32_t loopEnd2(92u);
+														uint32_t loopEnd2(TOTAL_SAMPLE_DATA_READ_SIZE);
 														if (loopEnd > TOTAL_SAMPLE_DATA_READ_SIZE)
 														{
 															loopEnd2 = loopEnd - TOTAL_SAMPLE_DATA_READ_SIZE;
@@ -879,11 +881,9 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 														{
 															if (writer.writeType(&shdr.sampleRate))
 															{
-																constexpr auto MONO_SAMPLE(0x00300001);
-
 																// todo: support for stereo
 
-																uint32_t format(MONO_SAMPLE);
+																uint32_t format(E4SampleVariables::EOS_MONO_SAMPLE);
 
 																const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
 																if (options.m_isChickenTranslatorFile)
@@ -901,7 +901,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
 																if (writer.writeType(&format))
 																{
 																	// Generally always empty, can keep as constexpr
-																	constexpr std::array<uint32_t, E4BVariables::NUM_EXTRA_SAMPLE_PARAMETERS> params2{};
+																	constexpr std::array<uint32_t, E4BVariables::EOS_NUM_EXTRA_SAMPLE_PARAMETERS> params2{};
 																	if (writer.writeType(params2.data(), sizeof(uint32_t) * params2.size()))
 																	{
 																		const std::vector sampleData(&sf2->samplesAsShort[shdr.start], &sf2->samplesAsShort[shdr.end]);

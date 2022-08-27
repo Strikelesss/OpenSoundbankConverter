@@ -21,7 +21,7 @@ namespace E4BViewer
 
 	// Other
 
-	inline ThreadPool m_threadPool(8u);
+	inline ThreadPool m_threadPool(4u);
 
 	// Rendering
 

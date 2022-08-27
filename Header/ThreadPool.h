@@ -5,9 +5,9 @@
 
 struct ThreadPool final
 {
-	explicit ThreadPool(unsigned int numThreads);
+	explicit ThreadPool(const unsigned int numThreads) { initialize(numThreads); }
 	ThreadPool(ThreadPool const&) = delete; ThreadPool& operator=(const ThreadPool&) = delete;
-	~ThreadPool() noexcept;
+	~ThreadPool() noexcept { waitForAll(); destroyAll(); }
 
 	void initialize(unsigned int numThreads);
 	void queueFunc(std::function<void()>&& func);

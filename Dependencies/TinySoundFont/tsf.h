@@ -206,7 +206,8 @@ typedef unsigned char tsf_u8;
 typedef unsigned short tsf_u16;
 typedef signed short tsf_s16;
 typedef unsigned int tsf_u32;
-typedef char tsf_char20[20];
+//typedef char tsf_char20[20];
+typedef std::array<char, 20> tsf_char20; // Custom
 
 #define TSF_FourCCEquals(value1, value2) (value1[0] == value2[0] && value1[1] == value2[1] && value1[2] == value2[2] && value1[3] == value2[3])
 
@@ -637,7 +638,7 @@ static int tsf_load_presets(tsf* res, struct tsf_hydra *hydra, unsigned int font
 		}
 
 		preset = &res->presets[sortedIndex];
-		TSF_MEMCPY(preset->presetName, pphdr->presetName, sizeof(preset->presetName));
+		TSF_MEMCPY(preset->presetName.data(), pphdr->presetName.data(), sizeof(preset->presetName));
 		preset->presetName[sizeof(preset->presetName)-1] = '\0'; //should be zero terminated in source file but make sure
 		preset->bank = pphdr->bank;
 		preset->preset = pphdr->preset;
@@ -1086,7 +1087,7 @@ TSFDEF int tsf_get_presetcount(const tsf* f)
 
 TSFDEF const char* tsf_get_presetname(const tsf* f, int preset)
 {
-	return (preset < 0 || preset >= f->presetNum ? TSF_NULL : f->presets[preset].presetName);
+	return (preset < 0 || preset >= f->presetNum ? TSF_NULL : f->presets[preset].presetName.data());
 }
 
 TSFDEF const char* tsf_bank_get_presetname(const tsf* f, int bank, int preset_number)

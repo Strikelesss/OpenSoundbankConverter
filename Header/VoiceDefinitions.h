@@ -4,8 +4,12 @@
 
 namespace VoiceDefinitions
 {
-	constexpr double MAX_FREQUENCY_20000 = 9.90348755253612804;
-	constexpr double MIN_FREQUENCY_57 = 4.04305126783455015;
+	constexpr auto MAX_FREQUENCY_20000 = 9.90348755253612804;
+	constexpr auto MIN_FREQUENCY_57 = 4.04305126783455015;
+	constexpr auto MAX_FREQUENCY_BYTE = 255.;
+	constexpr auto MAX_FINE_TUNE_BYTE = 64.;
+	constexpr auto MIN_CHORUS_WIDTH = 0.78125f;
+	constexpr auto MIN_FINE_TUNE = 1.5625;
 
 	constexpr float convert_cB_to_dB(const float cb) { return cb / 10.f; }
 	int16_t convert_dB_to_cB(float db);
@@ -13,7 +17,12 @@ namespace VoiceDefinitions
 	double centsToHertz(int16_t cents);
 	int16_t hertzToCents(double hz);
 
-	[[nodiscard]] std::string_view GetMIDINoteFromKey(uint8_t key);
+	template<typename T>
+	constexpr int16_t valueToRelPercent(const T val) { return static_cast<int16_t>(val * T(10)); }
+
+	constexpr float relPercentToValue(const float val) { return val / 10.f; }
+
+	[[nodiscard]] std::string_view GetMIDINoteFromKey(uint32_t key);
 	[[nodiscard]] std::string_view GetFilterTypeFromByte(uint8_t b);
 	[[nodiscard]] uint16_t ConvertByteToFilterFrequency(uint8_t b);
 	[[nodiscard]] uint8_t ConvertFilterFrequencyToByte(uint16_t freq);

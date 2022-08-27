@@ -28,7 +28,7 @@ struct E4VoiceResult final
 	[[nodiscard]] const E4Envelope& GetAuxEnv() const { return m_auxEnv; }
 	[[nodiscard]] const E4LFO& GetLFO1() const { return m_lfo1; }
 	[[nodiscard]] const E4LFO& GetLFO2() const { return m_lfo2; }
-	[[nodiscard]] const std::array<E4Cord, 24>& GetCords() const { return m_cords; }
+	[[nodiscard]] const std::array<E4Cord, E4BVariables::EOS_MAX_CORDS>& GetCords() const { return m_cords; }
 
 	/*
 	* Returns false if the cord does not exist OR if the amount is 0
@@ -58,7 +58,7 @@ private:
 	E4LFO m_lfo1{};
 	E4LFO m_lfo2{};
 
-	std::array<E4Cord, 24> m_cords{};
+	std::array<E4Cord, E4BVariables::EOS_MAX_CORDS> m_cords{};
 };
 
 struct E4SampleResult final

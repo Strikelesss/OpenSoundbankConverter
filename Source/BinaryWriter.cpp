@@ -12,8 +12,8 @@ bool BinaryWriter::finishWriting()
 
 		if(!m_writeFile.empty())
 		{
-			std::ofstream of(m_writeFile.data(), std::ios::binary);
-			of.write(m_writeDataVector.data(), static_cast<std::streamsize>(m_writeDataVector.size()));
+			std::ofstream ofs(m_writeFile.data(), std::ios::binary);
+			ofs.write(m_writeDataVector.data(), static_cast<std::streamsize>(m_writeDataVector.size()));
 		}
 
 		return true;

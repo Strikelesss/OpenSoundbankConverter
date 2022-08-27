@@ -19,11 +19,11 @@ namespace E4BVariables
 	constexpr std::string_view EOS_EMSt_TAG = "EMSt";
 
 	constexpr auto EOS_E4_MAX_NAME_LEN = 16u;
-	constexpr auto NUM_SAMPLE_PARAMETERS = 9u;
-	constexpr auto NUM_EXTRA_SAMPLE_PARAMETERS = 8u;
-
-	constexpr size_t EOS_E3_SAMPLE_REDUNDANT_OFFSET = EOS_CHUNK_NAME_OFFSET + EOS_E4_MAX_NAME_LEN + sizeof(uint32_t) * NUM_SAMPLE_PARAMETERS +
-		sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) * NUM_EXTRA_SAMPLE_PARAMETERS;
+	constexpr auto EOS_NUM_SAMPLE_PARAMETERS = 9u;
+	constexpr auto EOS_NUM_EXTRA_SAMPLE_PARAMETERS = 8u;
+	constexpr auto EOS_MIN_KEY_ZONE_RANGE = 0ui8;
+	constexpr auto EOS_MAX_KEY_ZONE_RANGE = 127ui8;
+	constexpr auto EOS_MAX_CORDS = 24;
 
 	constexpr std::array<std::string_view, 128> midiKeyNotes{
 		"C-2", "C#-2", "D-2", "D#-2", "E-2", "F-2", "F#-2", "G-2", "G#-2", "A-2", "A#-2", "B-2",

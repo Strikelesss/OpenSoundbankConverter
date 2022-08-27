@@ -181,7 +181,9 @@ E4Envelope::E4Envelope(const double attackSec, const double decaySec, const doub
 		// This is set to 99.2% to allow for the seconds to be set, otherwise it would be ignored.
 		// It can also be 100%, but then Attack2 cannot be set.
 		// TODO: attempt to get level(s) based on the time (see issue on GitHub)
-		m_attack1Level = VoiceDefinitions::ConvertPercentToByteF(99.2f);
+
+		constexpr auto TEMP_ATTACK_1_LEVEL(99.2f);
+		m_attack1Level = VoiceDefinitions::ConvertPercentToByteF(TEMP_ATTACK_1_LEVEL);
 	}
 }
 

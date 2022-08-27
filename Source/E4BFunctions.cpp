@@ -61,10 +61,10 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			E4Preset preset;
 			reader.readTypeAtLocation(&preset, chunkLocationWithOffset - 2ull, PRESET_DATA_READ_SIZE);
 
-			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
 			const auto numVoices(preset.GetNumVoices());
 			if (numVoices > 0ui16)
 			{
+				auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
 				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetDataSize()));
 
 				for (uint16_t j(0ui16); j < numVoices; ++j)
@@ -80,16 +80,17 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						E4VoiceEndData voiceEnd;
 						reader.readTypeAtLocation(&voiceEnd, voicePos + VOICE_DATA_SIZE + k * VOICE_END_DATA_SIZE, VOICE_END_DATA_READ_SIZE);
 
-						auto keyZoneRange(numVoiceEnds > 1ull ? voiceEnd.GetKeyZoneRange() : voice.GetKeyZoneRange());
-						const auto pan(numVoiceEnds > 1ull ? voiceEnd.GetPan() : voice.GetPan());
-						const auto volume(numVoiceEnds > 1ull ? voiceEnd.GetVolume() : voice.GetVolume());
-						const auto fineTune(numVoiceEnds > 1ull ? voiceEnd.GetFineTune() : voice.GetFineTune());
+						const auto multipleVoiceEnds(numVoiceEnds > 1ull);
+						auto keyZoneRange(multipleVoiceEnds ? voiceEnd.GetKeyZoneRange() : voice.GetKeyZoneRange());
+						const auto pan(multipleVoiceEnds ? voiceEnd.GetPan() : voice.GetPan());
+						const auto volume(multipleVoiceEnds ? voiceEnd.GetVolume() : voice.GetVolume());
+						const auto fineTune(multipleVoiceEnds ? voiceEnd.GetFineTune() : voice.GetFineTune());
 
 						// Account for the odd 'multisample' stuff
-						if (numVoiceEnds > 1ull)
+						if (multipleVoiceEnds)
 						{
-							if (keyZoneRange.GetLow() == 0ui8) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
-							if (keyZoneRange.GetHigh() == 127ui8) { keyZoneRange.SetHigh(voice.GetKeyZoneRange().GetHigh()); }
+							if (keyZoneRange.GetLow() == E4BVariables::EOS_MIN_KEY_ZONE_RANGE) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
+							if (keyZoneRange.GetHigh() == E4BVariables::EOS_MAX_KEY_ZONE_RANGE) { keyZoneRange.SetHigh(voice.GetKeyZoneRange().GetHigh()); }
 						}
 
 						presetResult.AddVoice(E4VoiceResult(voice, keyZoneRange, voiceEnd.GetOriginalKey(), 
@@ -104,11 +105,12 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		{
 			if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_E3_SAMPLE_TAG.data(), E4BVariables::EOS_E3_SAMPLE_TAG.length()) == 0)
 			{
-				E4Sample sample;
-				reader.readTypeAtLocation(&sample, chunkLocationWithOffset - (sizeof(uint16_t) + sizeof(uint16_t)), SAMPLE_DATA_READ_SIZE);
+				const auto sampleDataLocation(chunkLocationWithOffset - (sizeof(uint16_t) + sizeof(uint16_t)));
 
-				const auto wavStart(chunkLocation + E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET);
-				//const auto numSamples((chunkLength - E4BVariables::EOS_E3_SAMPLE_REDUNDANT_OFFSET) / 2);
+				E4Sample sample;
+				reader.readTypeAtLocation(&sample, sampleDataLocation, SAMPLE_DATA_READ_SIZE);
+
+				const auto wavStart(sampleDataLocation + 4ull + TOTAL_SAMPLE_DATA_READ_SIZE);
 
 				const auto& bankData(reader.GetData());
 				std::vector<int16_t> convertedSampleData;
@@ -116,29 +118,28 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 
 				for(size_t k(0); k < sampleData.size(); k += 2) { convertedSampleData.emplace_back(static_cast<int16_t>(sampleData[k] | sampleData[k + 1] << 8)); }
 
-				// 0 = ???
-				// 1 = start of left channel (TOTAL_SAMPLE_DATA_READ_SIZE)
-				// 2 = start of right channel (0 if mono)
-				// 3 = last sample of left channel (lastLoc - wavStart - 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
-				// 4 = last sample of right channel (3 - TOTAL_SAMPLE_DATA_READ_SIZE)
-				// 5 = loop start (* 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
-				// 6 = 5 - TOTAL_SAMPLE_DATA_READ_SIZE
-				// 7 = loop end (* 2 + TOTAL_SAMPLE_DATA_READ_SIZE)
-				// 8 = 7 - TOTAL_SAMPLE_DATA_READ_SIZE
+				const auto sampleFormat(sample.GetFormat());
 
 				uint32_t loopStart(0u);
 				uint32_t loopEnd(0u);
-				const auto canLoop((sample.GetFormat() & E4SampleVariables::SAMPLE_LOOP_FLAG) == E4SampleVariables::SAMPLE_LOOP_FLAG);
+				const auto canLoop((sampleFormat & E4SampleVariables::SAMPLE_LOOP_FLAG) == E4SampleVariables::SAMPLE_LOOP_FLAG);
 				if(canLoop)
 				{
 					const auto& params(sample.GetParams());
-					if(params[5] > TOTAL_SAMPLE_DATA_READ_SIZE) { loopStart = (params[5] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u; }
-					if(params[7] > TOTAL_SAMPLE_DATA_READ_SIZE) { loopEnd = (params[7] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u; }
+					if(params[E4SampleVariables::SAMPLE_LOOP_START_PARAM_INDEX] > TOTAL_SAMPLE_DATA_READ_SIZE)
+					{
+						loopStart = (params[E4SampleVariables::SAMPLE_LOOP_START_PARAM_INDEX] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
+					}
+
+					if(params[E4SampleVariables::SAMPLE_LOOP_END_PARAM_INDEX] > TOTAL_SAMPLE_DATA_READ_SIZE)
+					{
+						loopEnd = (params[E4SampleVariables::SAMPLE_LOOP_END_PARAM_INDEX] - TOTAL_SAMPLE_DATA_READ_SIZE) / 2u;
+					}
 				}
 
 				outResult.MapSampleIndex(sample.GetIndex(), currentSampleIndex);
 				outResult.AddSample(E4SampleResult(sample.GetName(), std::move(convertedSampleData), sample.GetSampleRate(), GetSampleChannels(sample), 
-					canLoop, (sample.GetFormat() & E4SampleVariables::SAMPLE_RELEASE_FLAG) == E4SampleVariables::SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
+					canLoop, (sampleFormat & E4SampleVariables::SAMPLE_RELEASE_FLAG) == E4SampleVariables::SAMPLE_RELEASE_FLAG, loopStart, loopEnd));
 
 				++currentSampleIndex;
 			}
@@ -166,8 +167,10 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 		reader.readTypeAtLocation(tempChunkName.data(), lastLoc, E4BVariables::EOS_CHUNK_NAME_LEN);
 		if (std::strncmp(tempChunkName.data(), E4BVariables::EOS_EMSt_TAG.data(), E4BVariables::EOS_EMSt_TAG.length()) != 0) { return false; }
 
+		constexpr auto EMST_READ_OFFSET = 8ull;
+
 		E4EMSt emst;
-		reader.readTypeAtLocation(&emst, lastLoc + 8ull, EMST_DATA_READ_SIZE);
+		reader.readTypeAtLocation(&emst, lastLoc + EMST_READ_OFFSET, EMST_DATA_READ_SIZE);
 
 		outResult.SetCurrentPreset(emst.GetCurrentPreset());
 	}
