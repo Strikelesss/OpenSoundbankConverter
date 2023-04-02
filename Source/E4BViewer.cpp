@@ -346,7 +346,7 @@ void E4BViewer::Render()
 
 				ImGui::EndDisabled();
 
-				// TODO: remove
+				// TODO: Remove
 				if (!m_bankFiles.empty())
 				{
 					const auto firstExt(m_bankFiles[0].extension().string());
@@ -373,6 +373,99 @@ void E4BViewer::Render()
 								}
 							}
 						}
+
+					    if (ImGui::Button("Sequence Check"))
+					    {
+					        for (const auto& file : m_bankFiles)
+					        {
+					            if (exists(file))
+					            {
+					                m_threadPool.queueFunc([&]
+                                    {
+                                        BinaryReader reader;
+                                        if(reader.readFile(file))
+                                        {
+                                            E4Result tempResult;
+                                            if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+                                            {
+                                                if(!tempResult.GetSequences().empty())
+                                                {
+                                                    const auto str("'" + file.filename().string() + "' Sequence count: " + std::to_string(tempResult.GetSequences().size()));
+                                                    Logger::LogMessage(str.c_str());   
+                                                }
+                                            }
+                                        }
+                                    });
+					            }
+					        }
+					    }
+
+					    if (ImGui::Button("Sequence Extract"))
+					    {
+                            BROWSEINFO browseInfo{};
+                            browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+                            browseInfo.lpszTitle = _T("Select a folder to export to");
+
+					        std::filesystem::path saveFolder;
+                            const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
+                            if (pidl != nullptr)
+                            {
+                                std::array<TCHAR, MAX_PATH> path{};
+                                SHGetPathFromIDList(pidl, path.data());
+
+                                IMalloc* imalloc = nullptr;
+                                if (SUCCEEDED(SHGetMalloc(&imalloc)))
+                                {
+                                    imalloc->Free(pidl);
+                                    imalloc->Release();
+                                }
+
+                                saveFolder = std::filesystem::path(path.data());
+                            }
+
+                            if (!saveFolder.empty())
+                            {
+                                for (const auto& file : m_bankFiles)
+                                {
+                                    if (exists(file))
+                                    {
+                                        m_threadPool.queueFunc([&, saveFolder]
+                                        {
+                                            BinaryReader reader;
+                                            if (reader.readFile(file))
+                                            {
+                                                E4Result tempResult;
+                                                if (E4BFunctions::ProcessE4BFile(reader, tempResult))
+                                                {
+                                                    if (!tempResult.GetSequences().empty())
+                                                    {
+                                                        for (const auto& seq : tempResult.GetSequences())
+                                                        {
+                                                            std::filesystem::path saveFolderSeq(saveFolder);
+                                                            saveFolderSeq.append(seq.GetName());
+                                                            saveFolderSeq.replace_extension(".mid");
+
+                                                            BinaryWriter writer(saveFolderSeq);
+
+                                                            if (!writer.writeType(seq.GetMIDISeqData().data(), sizeof(char) * seq.GetMIDISeqData().size()))
+                                                            {
+                                                                Logger::LogMessage("Failed to extract sequence!");
+                                                                break;
+                                                            }
+
+                                                            if (!writer.finishWriting())
+                                                            {
+                                                                Logger::LogMessage("Failed to finish writing sequence!");
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+					    }
 					}
 				}
 

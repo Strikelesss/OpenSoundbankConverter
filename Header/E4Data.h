@@ -290,7 +290,12 @@ constexpr auto PRESET_DATA_READ_SIZE = 58ull;
 
 struct E4Sequence final
 {
-	[[nodiscard]] std::string GetName() const { return std::string(m_name.data()); }
+	[[nodiscard]] std::string GetName() const
+	{
+	    // Remove characters from 12 onward
+	    // TODO: Get total string length from chunk
+	    return std::string(m_name.data()).substr(0, 12);
+	}
 
 private:
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
