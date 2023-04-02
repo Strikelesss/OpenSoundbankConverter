@@ -61,10 +61,12 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 			E4Preset preset;
 			reader.readTypeAtLocation(&preset, chunkLocationWithOffset - 2ull, PRESET_DATA_READ_SIZE);
 
+			// This will stay here since we still want to create presets even though they have no data
+			auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
+
 			const auto numVoices(preset.GetNumVoices());
 			if (numVoices > 0ui16)
 			{
-				auto& presetResult(outResult.AddPreset(E4PresetResult(preset.GetIndex(), preset.GetName())));
 				auto voicePos(chunkLocationWithOffset + static_cast<uint64_t>(preset.GetDataSize()));
 
 				for (uint16_t j(0ui16); j < numVoices; ++j)
@@ -203,14 +205,14 @@ bool E4BFunctions::IsAccountingForCords(const E4Result& result)
 				if(cord.GetSource() == VEL_POLARITY_CENTER && cord.GetDest() == AMP_PAN) { continue; }
 				if(cord.GetSource() == KEY_POLARITY_CENTER && cord.GetDest() == FILTER_FREQ) { continue; }
 				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == FILTER_FREQ) { continue; }
+				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == CORD_3_AMT) { continue; }
 				if(cord.GetSource() == PRESSURE && cord.GetDest() == AMP_ENV_ATTACK) { continue; }
 				if(cord.GetSource() == PEDAL && cord.GetDest() == AMP_VOLUME) { continue; }
 
-				// skipping these
-				if(cord.GetSource() == 0ui8 && cord.GetDest() == CORD_3_AMT) { continue; }
-				if(cord.GetSource() == 0ui8 && cord.GetDest() == PITCH) { continue; }
-				if(cord.GetSource() == MOD_WHEEL && cord.GetDest() == CORD_3_AMT) { continue; }
-				if(cord.GetSource() == FOOTSWITCH_1 && cord.GetDest() == KEY_SUSTAIN) { continue; }
+				// Skipping these:
+				if(cord.GetSource() == 0ui8 && cord.GetDest() == CORD_3_AMT) { continue; } // This means controlling vibrato is OFF.
+				if(cord.GetSource() == 0ui8 && cord.GetDest() == PITCH) { continue; } // This means the pitch wheel is OFF.
+				if(cord.GetSource() == FOOTSWITCH_1 && cord.GetDest() == KEY_SUSTAIN) { continue; } // Emax II specific
 				if(cord.GetSource() == 0ui8 && cord.GetDest() == 0ui8) { continue; }
 
 				Logger::LogMessage("(preset: %s, voice: %d) Cord was not accounted: src: %d, dst: %d", preset.GetName().c_str(), voiceIndex, cord.GetSource(), cord.GetDest());

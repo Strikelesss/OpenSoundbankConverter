@@ -29,7 +29,7 @@ namespace E4SampleVariables
 
 struct E4Sample final
 {
-	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
+	[[nodiscard]] std::string GetName() const { return std::string(m_name.data()); }
 	[[nodiscard]] const std::array<uint32_t, E4BVariables::EOS_NUM_SAMPLE_PARAMETERS>& GetParams() const { return m_params; }
 	[[nodiscard]] uint32_t GetSampleRate() const { return m_sampleRate; }
 	[[nodiscard]] uint32_t GetFormat() const { return m_format; }

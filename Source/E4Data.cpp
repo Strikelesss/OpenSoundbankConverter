@@ -77,8 +77,19 @@ bool E4Voice::write(BinaryWriter& writer)
 		&& writer.writeType(&m_chorusWidth) && writer.writeType(&m_chorusAmount) && writer.writeType(m_possibleRedundant4.data(), sizeof(int8_t) * m_possibleRedundant4.size()) && writer.writeType(&m_volume)
 		&& writer.writeType(&m_pan) && writer.writeType(&m_possibleRedundant5) && writer.writeType(&m_ampEnvDynRange))
 	{
-		// If the filter frequency isn't 20,000, pick 4 Pole Lowpass, if it is, pick No Filter if it has no filter resonance
-		const auto filterType(m_filterFrequency < 255ui8 ? 0ui8 : m_filterQ > 0ui8 ? 0ui8 : 127ui8);
+		// If the filter frequency isn't 20,000, pick 4 Pole Lowpass, if it is, pick No Filter if there's no filter resonance or realtime filter modifications:
+		
+		bool hasFilter(m_filterFrequency < 255ui8 || m_filterQ > 0ui8);
+		if(!hasFilter)
+		{
+			for(const auto& cord : m_cords)
+			{
+				const auto dest(cord.GetDest());
+				if((dest == FILTER_FREQ || dest == FILTER_RES) && cord.GetAmount() != 0ui8) { hasFilter = true; break; }
+			}
+		}
+
+		const auto filterType(hasFilter ? 0ui8 : 127ui8);
 
 		if (writer.writeType(&filterType) && writer.writeType(&m_possibleRedundant6) && writer.writeType(&m_filterFrequency) && writer.writeType(&m_filterQ) &&
 			writer.writeType(m_possibleRedundant7.data(), sizeof(int8_t) * m_possibleRedundant7.size()))

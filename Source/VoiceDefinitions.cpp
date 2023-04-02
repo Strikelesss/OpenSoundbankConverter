@@ -48,13 +48,13 @@ uint8_t VoiceDefinitions::ConvertFilterFrequencyToByte(const uint16_t freq)
 	return static_cast<uint8_t>(std::round((std::log(freq) - MIN_FREQUENCY_57) / (MAX_FREQUENCY_20000 - MIN_FREQUENCY_57) * MAX_FREQUENCY_BYTE));
 }
 
-// [-100, 100] to [0, 64]
+// [-100, 100] to [-64, 64]
 int8_t VoiceDefinitions::ConvertFineTuneToByte(const double fineTune)
 {
 	return static_cast<int8_t>(std::round((fineTune - 100.) / MIN_FINE_TUNE + MAX_FINE_TUNE_BYTE));
 }
 
-// [0, 64] to [-100, 100]
+// [-64, 64] to [-100, 100]
 double VoiceDefinitions::ConvertByteToFineTune(const int8_t b)
 {
 	return MathFunctions::round_d_places((static_cast<double>(b) - MAX_FINE_TUNE_BYTE) * MIN_FINE_TUNE + 100., 2u);

@@ -379,12 +379,8 @@ void E4BViewer::Render()
 				ImGui::BeginDisabled(m_conversionType.empty());
 
 				ImGui::Checkbox("Flip Pan", &m_flipPan);
-
-				if(strCI(m_conversionType, "E4B"))
-				{
-					ImGui::SameLine();
-					ImGui::Checkbox("Is Chicken Translator File", &m_isChickenTranslatorFile);
-				}
+				ImGui::Checkbox("Use Converter Specific Data", &m_useConverterSpecificData);
+				ImGui::Checkbox("Correct Fine Tune (temp)", &m_useTempFineTune);
 
 				ImGui::SameLine();
 
@@ -396,7 +392,7 @@ void E4BViewer::Render()
 						browseInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
 						browseInfo.lpszTitle = _T("Select a folder to export to");
 
-						ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_isChickenTranslatorFile);
+						ConverterOptions options(m_flipPan, m_useConverterSpecificData, m_useTempFineTune);
 
 						const LPITEMIDLIST pidl(SHBrowseForFolder(&browseInfo));
 						if (pidl != nullptr)
@@ -472,7 +468,6 @@ void E4BViewer::Render()
 					m_bankFiles.clear();
 					m_conversionType.clear();
 					m_flipPan = false;
-					m_isChickenTranslatorFile = false;
 				}
 
 				ImGui::EndTabItem();

@@ -6,12 +6,12 @@ struct E4Result;
 struct ConverterOptions final
 {
 	ConverterOptions() noexcept = default;
-	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool isChickenTranslatorFile)
-		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_isChickenTranslatorFile(isChickenTranslatorFile) {}
+	explicit ConverterOptions(const bool flipPan, const bool useConverterSpecificData, const bool useTempFineTune)
+		: m_flipPan(flipPan), m_useConverterSpecificData(useConverterSpecificData), m_useTempFineTune(useTempFineTune) {}
 
 	bool m_flipPan = false;
 	bool m_useConverterSpecificData = true;
-	bool m_isChickenTranslatorFile = false;
+	bool m_useTempFineTune = false;
 	std::filesystem::path m_saveFolder;
 };
 
@@ -47,4 +47,6 @@ struct BankConverter final
 private:
 	[[nodiscard]] std::string ConvertNameToEmuName(const std::string_view& name) const;
 	[[nodiscard]] std::string ConvertNameToSFName(const std::string_view& name) const;
+
+	void InterleaveSamples(const int16_t* leftChannel, const int16_t* rightChannel, int16_t* outStereo, size_t sampleNum) const;
 };

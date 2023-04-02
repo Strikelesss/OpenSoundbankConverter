@@ -35,7 +35,7 @@ enum EEOSCordDest : uint8_t
 	AMP_PAN = 65ui8,
 	AMP_ENV_ATTACK = 73ui8,
 	FILTER_ENV_ATTACK = 81ui8,
-	CORD_3_AMT = 170ui8
+	CORD_3_AMT = 170ui8 // Otherwise known as 'Vibrato'
 };
 
 struct E4VoiceNoteData final
@@ -145,7 +145,7 @@ private:
 	uint8_t m_shape = 0ui8;
 	uint8_t m_delay = 0ui8;
 	uint8_t m_variation = 0ui8;
-	bool m_keySync = true; // 00 = on, 01 = off (make sure to flip when getting)
+	bool m_keySync = false; // 00 = on, 01 = off (make sure to flip when getting)
 
 	std::array<int8_t, 3> m_possibleRedundant1{};
 };
@@ -267,7 +267,7 @@ constexpr auto VOICE_DATA_READ_SIZE = 284ull;
 struct E4Preset final
 {
 	[[nodiscard]] uint16_t GetIndex() const { return _byteswap_ushort(m_index); }
-	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
+	[[nodiscard]] std::string GetName() const { return std::string(m_name.data()); }
 	[[nodiscard]] uint16_t GetNumVoices() const { return _byteswap_ushort(m_numVoices); }
 	[[nodiscard]] uint16_t GetDataSize() const { return _byteswap_ushort(m_dataSize); }
 
@@ -290,7 +290,7 @@ constexpr auto PRESET_DATA_READ_SIZE = 58ull;
 
 struct E4Sequence final
 {
-	[[nodiscard]] std::string GetName() const { return std::string(m_name); }
+	[[nodiscard]] std::string GetName() const { return std::string(m_name.data()); }
 
 private:
 	std::array<char, E4BVariables::EOS_E4_MAX_NAME_LEN> m_name{};
