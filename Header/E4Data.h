@@ -9,6 +9,7 @@ struct BinaryWriter;
 
 enum EEOSCordSource : uint8_t
 {
+    SRC_OFF = 0ui8,
 	KEY_POLARITY_POS = 8ui8,
 	KEY_POLARITY_CENTER = 9ui8,
 	VEL_POLARITY_POS = 10ui8,
@@ -27,6 +28,7 @@ enum EEOSCordSource : uint8_t
 
 enum EEOSCordDest : uint8_t
 {
+    DST_OFF = 0ui8,
 	KEY_SUSTAIN = 8ui8,
 	PITCH = 48ui8,
 	FILTER_FREQ = 56ui8,
@@ -162,8 +164,8 @@ struct E4Cord final
 	void SetSrc(const uint8_t src) { m_src = src; }
 	void SetDst(const uint8_t dst) { m_dst = dst; }
 private:
-	uint8_t m_src = 0ui8;
-	uint8_t m_dst = 0ui8;
+	uint8_t m_src = SRC_OFF;
+	uint8_t m_dst = DST_OFF;
 	int8_t m_amt = 0i8;
 	uint8_t m_possibleRedundant1 = 0ui8;
 };
@@ -196,6 +198,7 @@ struct E4Voice final
 	[[nodiscard]] bool write(BinaryWriter& writer);
 
 	void ReplaceOrAddCord(uint8_t src, uint8_t dst, float amount);
+    void DisableCord(uint8_t src, uint8_t dst);
 
 private:
 	uint16_t m_totalVoiceSize = 0ui16; // requires byteswap

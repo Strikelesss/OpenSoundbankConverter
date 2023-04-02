@@ -88,7 +88,7 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 						const auto volume(multipleVoiceEnds ? voiceEnd.GetVolume() : voice.GetVolume());
 						const auto fineTune(multipleVoiceEnds ? voiceEnd.GetFineTune() : voice.GetFineTune());
 
-						// Account for the odd 'multisample' stuff
+						// Accounts for the odd 'multisample' stuff
 						if (multipleVoiceEnds)
 						{
 							if (keyZoneRange.GetLow() == E4BVariables::EOS_MIN_KEY_ZONE_RANGE) { keyZoneRange.SetLow(voice.GetKeyZoneRange().GetLow()); }
@@ -180,7 +180,6 @@ bool E4BFunctions::ProcessE4BFile(BinaryReader& reader, E4Result& outResult)
 	return true;
 }
 
-// TODO: remove
 bool E4BFunctions::IsAccountingForCords(const E4Result& result)
 {
 	bool isAccounting(true);
@@ -210,10 +209,10 @@ bool E4BFunctions::IsAccountingForCords(const E4Result& result)
 				if(cord.GetSource() == PEDAL && cord.GetDest() == AMP_VOLUME) { continue; }
 
 				// Skipping these:
-				if(cord.GetSource() == 0ui8 && cord.GetDest() == CORD_3_AMT) { continue; } // This means controlling vibrato is OFF.
-				if(cord.GetSource() == 0ui8 && cord.GetDest() == PITCH) { continue; } // This means the pitch wheel is OFF.
+				if(cord.GetSource() == SRC_OFF && cord.GetDest() == CORD_3_AMT) { continue; } // This means controlling vibrato is OFF.
+				if(cord.GetSource() == SRC_OFF && cord.GetDest() == PITCH) { continue; } // This means the pitch wheel is OFF.
 				if(cord.GetSource() == FOOTSWITCH_1 && cord.GetDest() == KEY_SUSTAIN) { continue; } // Emax II specific
-				if(cord.GetSource() == 0ui8 && cord.GetDest() == 0ui8) { continue; }
+				if(cord.GetSource() == SRC_OFF && cord.GetDest() == DST_OFF) { continue; }
 
 				Logger::LogMessage("(preset: %s, voice: %d) Cord was not accounted: src: %d, dst: %d", preset.GetName().c_str(), voiceIndex, cord.GetSource(), cord.GetDest());
 				isAccounting = false;

@@ -123,7 +123,7 @@ void E4Voice::ReplaceOrAddCord(const uint8_t src, const uint8_t dst, const float
 	// Replace null cord
 	for(auto& cord : m_cords)
 	{
-		if(cord.GetSource() == 0ui8 && cord.GetDest() == 0ui8)
+		if(cord.GetSource() == SRC_OFF && cord.GetDest() == DST_OFF)
 		{
 			cord.SetAmount(static_cast<int8_t>(amount));
 			cord.SetSrc(src);
@@ -131,6 +131,18 @@ void E4Voice::ReplaceOrAddCord(const uint8_t src, const uint8_t dst, const float
 			break;
 		}
 	}
+}
+
+void E4Voice::DisableCord(const uint8_t src, const uint8_t dst)
+{
+    for(auto& cord : m_cords)
+    {
+        if(cord.GetSource() == src && cord.GetDest() == dst)
+        {
+            cord.SetSrc(SRC_OFF);
+            break;
+        }
+    }
 }
 
 bool E4EMSt::write(BinaryWriter& writer)

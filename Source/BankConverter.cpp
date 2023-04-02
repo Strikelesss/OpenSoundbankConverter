@@ -694,6 +694,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                                 if (LFO1ToAmpPan != 0i8) { voice.ReplaceOrAddCord(LFO1_POLARITY_CENTER, AMP_PAN, VoiceDefinitions::ConvertPercentToByteF(LFO1ToAmpPan)); }
                                                                             }
 
+                                                                            // Default values in E4B
+                                                                            bool hasPitchWheel(false);
+                                                                            bool hasModWheel(false);
+
                                                                             for (const auto& mod : region.modulators)
                                                                             {
                                                                                 const sf2cute::SFModulator srcOper(mod.modSrcOper);
@@ -712,6 +716,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                                                     if (srcOper.polarity() == sf2cute::SFControllerPolarity::kBipolar)
                                                                                                     {
                                                                                                         voice.ReplaceOrAddCord(PITCH_WHEEL, PITCH, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+                                                                                                        hasPitchWheel = true;
                                                                                                     }
                                                                                                 }
                                                                                             }
@@ -806,6 +811,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                                                     if (srcOper.polarity() == sf2cute::SFControllerPolarity::kUnipolar)
                                                                                                     {
                                                                                                         voice.ReplaceOrAddCord(MOD_WHEEL, CORD_3_AMT, VoiceDefinitions::ConvertPercentToByteF(modAmountF));
+                                                                                                        hasModWheel = true;
                                                                                                     }
                                                                                                 }
                                                                                             }
@@ -825,6 +831,16 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                                         }
                                                                                     }
                                                                                 }
+                                                                            }
+
+                                                                            if(!hasPitchWheel)
+                                                                            {
+                                                                                voice.DisableCord(PITCH_WHEEL, PITCH);
+                                                                            }
+
+                                                                            if(!hasModWheel)
+                                                                            {
+                                                                                voice.DisableCord(MOD_WHEEL, CORD_3_AMT);
                                                                             }
 
                                                                             const auto originalKey(static_cast<uint8_t>(region.pitch_keycenter));
