@@ -35,7 +35,7 @@ bool E4BViewer::CreateResources()
 #ifdef _DEBUG
 	    D3D11_CREATE_DEVICE_DEBUG
 #else
-	    0u
+	    D3D11_CREATE_DEVICE_DEBUG
 #endif
 	    );
 	
@@ -48,7 +48,9 @@ bool E4BViewer::CreateResources()
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer(nullptr);
 	if(SUCCEEDED(m_swapchain->GetBuffer(0u, IID_PPV_ARGS(&pBackBuffer))))
 	{
-		assert(SUCCEEDED(m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv)));
+	    const auto hr(m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv));
+	    assert(SUCCEEDED(hr));
+	    if(FAILED(hr)) { Logger::LogMessage("CreateRenderTargetView failed!"); return false; }
 	    
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
@@ -95,7 +97,9 @@ void E4BViewer::Render()
 	m_deviceContext->ClearRenderTargetView(m_rtv.Get(), CLEAR_COLOR.data());
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-	assert(SUCCEEDED(m_swapchain->Present(0u, 0u)));
+    const auto hr(m_swapchain->Present(0u, 0u));
+    assert(SUCCEEDED(hr));
+    if(FAILED(hr)) { Logger::LogMessage("Failed to present!"); }
 }
 
 int WINAPI WinMain(_In_ const HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int)
@@ -106,7 +110,7 @@ int WINAPI WinMain(_In_ const HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPST
         nullptr, E4BViewer::m_windowName.data(), LoadIcon(nullptr, IDI_APPLICATION)};
 
     if (!RegisterClassEx(&wc)) { MessageBoxA(nullptr, "Window Registration Failed!", "Error!", 
-        MB_ICONEXCLAMATION | MB_OK); return false; }
+        MB_ICONEXCLAMATION | MB_OK); return 0; }
 
     E4BViewer::m_currentWindowSizeX = 1280.f;
     E4BViewer::m_currentWindowSizeY = 720.f;
@@ -118,7 +122,7 @@ int WINAPI WinMain(_In_ const HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPST
         CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top, nullptr, nullptr, wc.hInstance, nullptr);
 
     if (!E4BViewer::m_hwnd) { MessageBoxA(nullptr, "Window Creation Failed!", "Error", 
-        MB_ICONEXCLAMATION | MB_OK); return false; }
+        MB_ICONEXCLAMATION | MB_OK); return 0; }
     
     if (!E4BViewer::CreateResources())
     {
@@ -136,7 +140,7 @@ int WINAPI WinMain(_In_ const HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPST
             DispatchMessage(&msg);
 			if (msg.message == WM_QUIT) { keepRunning = false; }
         }
-
+        
 		if (!keepRunning) { break; }
         E4BViewer::Render();
     }
@@ -167,12 +171,17 @@ LRESULT E4BViewer::WndProc(const HWND hWnd, const UINT msg, const WPARAM wParam,
 
 				m_currentWindowSizeX = static_cast<float>(width);
 				m_currentWindowSizeY = static_cast<float>(height);
-				assert(SUCCEEDED(m_swapchain->ResizeBuffers(0u, width, height, DXGI_FORMAT_UNKNOWN, 0u)));
+
+			    auto hr(m_swapchain->ResizeBuffers(0u, width, height, DXGI_FORMAT_UNKNOWN, 0u));
+				assert(SUCCEEDED(hr));
+			    if(FAILED(hr)) { Logger::LogMessage("ResizeBuffers failed!"); return 1; }
 
 				Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer(nullptr);
 				if (SUCCEEDED(m_swapchain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer))))
 				{
-					assert(SUCCEEDED(m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv)));
+				    hr = m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv);
+				    if(FAILED(hr)) { Logger::LogMessage("CreateRenderTargetView failed!"); return 1; }
+					assert(SUCCEEDED(hr));
 					return 1;
 				}
 			}
