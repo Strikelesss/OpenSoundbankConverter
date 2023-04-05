@@ -95,6 +95,7 @@ constexpr auto VOICE_END_DATA_READ_SIZE = 16ull;
 struct E4Envelope final
 {
 	E4Envelope() = default;
+    explicit E4Envelope(float attackSec, float decaySec, float holdSec, float releaseSec, float delaySec, float sustainLevel);
 	explicit E4Envelope(double attackSec, double decaySec, double holdSec, double releaseSec, double delaySec, float sustainLevel);
 
 	[[nodiscard]] double GetAttack1Sec() const;

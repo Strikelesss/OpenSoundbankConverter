@@ -6,6 +6,10 @@
 #include <filesystem>
 #include <wrl/client.h>
 
+#include "BankConverter.h"
+
+struct ImVec2;
+
 namespace E4BViewer
 {
 	inline bool strCIPred(const uint8_t a, const uint8_t b) { return std::tolower(a) == std::tolower(b); }
@@ -25,6 +29,7 @@ namespace E4BViewer
 
 	// Rendering
 
+    constexpr std::wstring_view m_windowName(L"E4BViewer");
 	constexpr std::array CLEAR_COLOR{0.f,0.f,0.f,0.f};
 
 	inline HWND m_hwnd;
@@ -37,10 +42,17 @@ namespace E4BViewer
 
 	// UI Specific
 
+    void DisplayConverter(const ImVec2& windowSize);
+    void DisplayBankInfoWindow(const std::string_view& popupName);
+    
+    void DisplayOptions();
+    
+    void DisplayConsole();
+
 	inline E4Result m_vdTempResult;
 	inline std::vector<std::filesystem::path> m_bankFiles{};
 	inline std::string m_conversionType;
-	inline bool m_flipPan = false, m_useConverterSpecificData = true, m_useTempFineTune = false;
+    inline ConverterOptions m_converterOptions(false, true, false);
 	inline bool m_queueClear = false;
 	inline bool m_vdMenuOpen = false;
 }

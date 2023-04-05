@@ -3,6 +3,31 @@
 
 struct E4Result;
 
+namespace ADSR_EnvelopeStatics
+{
+    constexpr float MIN_ADSR = 0.f;
+    constexpr float MAX_ATTACK_TIME = 40.f;
+    constexpr float MAX_DECAY_TIME = 80.f;
+    constexpr float MAX_HOLD_TIME = 20.f;
+    constexpr float MAX_SUSTAIN_DB = 100.f;
+    constexpr float MAX_RELEASE_TIME = 80.f;
+}
+
+struct ADSR_Envelope final
+{
+    ADSR_Envelope() = default;
+    explicit ADSR_Envelope(const float attackTime, const float decay, const float hold, const float sustainDB, const float release)
+        : m_attackTime(attackTime), m_decayTime(decay), m_holdTime(hold), m_sustainDB(sustainDB), m_releaseTime(release) {}
+
+    [[nodiscard]] bool IsZeroed() const;
+    
+    float m_attackTime = 0.f;
+    float m_decayTime = 0.f;
+    float m_holdTime = 0.f;
+    float m_sustainDB = 0.f;
+    float m_releaseTime = 0.f;
+};
+
 struct ConverterOptions final
 {
 	ConverterOptions() noexcept = default;
@@ -12,6 +37,7 @@ struct ConverterOptions final
 	bool m_flipPan = false;
 	bool m_useConverterSpecificData = true;
 	bool m_useTempFineTune = false;
+    ADSR_Envelope m_filterDefaults{};
 	std::filesystem::path m_saveFolder;
 };
 

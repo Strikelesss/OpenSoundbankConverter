@@ -43,6 +43,15 @@ int16_t SF2Converter::secToTimecent(const double sec)
     return static_cast<int16_t>(std::lround(std::log(sec) / std::log(2) * 1200.));
 }
 
+bool ADSR_Envelope::IsZeroed() const
+{
+    // && MathFunctions::isEqual_f(m_sustainDB, 0.f)
+    return MathFunctions::isEqual_f(m_attackTime, 0.f)
+        && MathFunctions::isEqual_f(m_decayTime, 0.f)
+        && MathFunctions::isEqual_f(m_holdTime, 0.f)
+        && MathFunctions::isEqual_f(m_releaseTime, 0.f);
+}
+
 bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view& bankName, const ConverterOptions& options) const
 {
     if (e4b.GetSamples().empty() || e4b.GetPresets().empty() || bankName.empty())
@@ -116,7 +125,7 @@ bool BankConverter::ConvertE4BToSF2(const E4Result& e4b, const std::string_view&
             }
 
             // Envelope
-            // TODO: plot points from E4B onto an ADSR envelope and grab the time, since the time is inaccurate below (a binary value of 126 could be 2.1 sec, when it normally is say 80 sec)
+            // TODO: Plot points from E4B onto an ADSR envelope and grab the time, since the time is inaccurate below (a binary value of 126 could be 2.1 sec, when it normally is say 80 sec)
 
             const auto& ampEnv(voice.GetAmpEnv());
             const auto ampDelaySec(SF2Converter::secToTimecent(voice.GetKeyDelay()));
@@ -613,7 +622,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                         {
                                                                             const auto& region(preset.regions[j]);
                                                                             const auto filterFreq(static_cast<int16_t>(tsf_cents2Hertz(static_cast<float>(region.initialFilterFc))));
-                                                                            const auto convertedPan(std::round(VoiceDefinitions::relPercentToValue(region.pan)));
+                                                                            const float convertedPan(std::round(VoiceDefinitions::relPercentToValue(region.pan)));
                                                                             const auto pan(static_cast<int8_t>(options.m_flipPan ? -convertedPan : convertedPan));
 
                                                                             auto volume(static_cast<int8_t>(region.attenuation));
@@ -622,9 +631,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                                 // Multiply by the sign since SF2 does not support negative attenuation
                                                                                 const auto attenuationSign(region.unused2);
                                                                                 volume = static_cast<int8_t>(attenuationSign != 0
-                                                                                                                 ? region.attenuation *
-                                                                                                                 static_cast<float>(attenuationSign)
-                                                                                                                 : region.attenuation);
+                                                                                    ? region.attenuation * static_cast<float>(attenuationSign)
+                                                                                    : region.attenuation);
                                                                             }
 
                                                                             const auto fineTune(static_cast<double>(region.tune));
@@ -632,25 +640,23 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                             const auto filterQ(static_cast<float>(region.initialFilterQ) / 10.f);
 
                                                                             const auto& ampEnv(region.ampenv);
-                                                                            const auto keyDelay(MathFunctions::round_f_places(ampEnv.delay, 3u));
-
-                                                                            const auto ampAttack(static_cast<double>(ampEnv.attack));
-                                                                            const auto ampRelease(static_cast<double>(ampEnv.release));
-                                                                            const auto ampDecay(static_cast<double>(ampEnv.decay));
-                                                                            const auto ampHold(static_cast<double>(ampEnv.hold));
-                                                                            const auto ampSustain(ampEnv.sustain * 100.f);
+                                                                            const ADSR_Envelope ampADSR(ampEnv.attack, ampEnv.decay, ampEnv.hold, ampEnv.sustain * 100.f, ampEnv.release);
+                                                                            const float keyDelay(MathFunctions::round_f_places(ampEnv.delay, 3u));
 
                                                                             const auto& filterEnv(region.modenv);
-                                                                            const auto filterAttack(static_cast<double>(filterEnv.attack));
-                                                                            const auto filterRelease(static_cast<double>(filterEnv.release));
-                                                                            const auto filterDelay(static_cast<double>(filterEnv.delay));
-                                                                            const auto filterDecay(static_cast<double>(filterEnv.decay));
-                                                                            const auto filterHold(static_cast<double>(filterEnv.hold));
-                                                                            const auto filterSustain(filterEnv.sustain * 100.f);
+                                                                            ADSR_Envelope filterADSR(filterEnv.attack, filterEnv.decay, filterEnv.hold, filterEnv.sustain * 100.f, filterEnv.release);
+                                                                            const float filterDelay(filterEnv.delay);
+                                                                            
+                                                                            // Apply the defaults if completely zeroed.
+                                                                            // TODO: Find a better way to check if the SF2 has unmodified filter settings
+                                                                            if(filterADSR.IsZeroed())
+                                                                            {
+                                                                                filterADSR = options.m_filterDefaults;
+                                                                            }
 
                                                                             float chorusAmount(VoiceDefinitions::relPercentToValue(region.chorusEffectsSend));
-                                                                            auto chorusWidth(0.f);
-                                                                            const auto LFO1Freq(VoiceDefinitions::centsToHertz(static_cast<int16_t>(region.freqModLFO)));
+                                                                            float chorusWidth(0.f);
+                                                                            const double LFO1Freq(VoiceDefinitions::centsToHertz(static_cast<int16_t>(region.freqModLFO)));
                                                                             const auto LFO1Delay(static_cast<double>(region.delayModLFO));
 
                                                                             E4LFO lfo1;
@@ -665,8 +671,8 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                             }
 
                                                                             E4Voice voice(chorusWidth, chorusAmount, filterFreq, coarseTune, pan, volume, fineTune, keyDelay, filterQ, {region.lokey, region.hikey},
-                                                                                {region.lovel, region.hivel}, E4Envelope(ampAttack, ampDecay, ampHold, ampRelease, 0., ampSustain),
-                                                                                E4Envelope(filterAttack, filterDecay, filterHold, filterRelease, filterDelay, filterSustain), lfo1);
+                                                                                {region.lovel, region.hivel}, E4Envelope(ampADSR.m_attackTime, ampADSR.m_decayTime, ampADSR.m_holdTime, ampADSR.m_releaseTime, 0.f, ampADSR.m_sustainDB),
+                                                                                E4Envelope(filterADSR.m_attackTime, filterADSR.m_decayTime, filterADSR.m_holdTime, filterADSR.m_releaseTime, filterDelay, filterADSR.m_sustainDB), lfo1);
 
                                                                             /*
                                                                              * Cords
@@ -875,9 +881,10 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                     
                                     for (const auto& shdr : shdrs)
                                     {
+                                        const auto emuName(ConvertNameToEmuName(shdr.sampleName.data()));
                                     	if(shdr.start == 0 && shdr.end == 0)
                                     	{
-                                    		Logger::LogMessage("Skipped sample with a start of 0 and end of 0.");
+                                    		Logger::LogMessage("(Bank: '%s', Sample: '%s'): Skipped sample with a start of 0 and end of 0.", bankName.data(), emuName.c_str());
                                     		continue;
                                     	}
                                     	
@@ -905,7 +912,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                 if (writer.writeType(&sampleChunkLen))
                                                 {
                                                     const auto sampleIndexBS(_byteswap_ushort(sampleIndex));
-                                                    if (writer.writeType(&sampleIndexBS) && writer.writeType(ConvertNameToEmuName(shdr.sampleName.data()).c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
+                                                    if (writer.writeType(&sampleIndexBS) && writer.writeType(emuName.c_str(), E4BVariables::EOS_E4_MAX_NAME_LEN))
                                                     {
                                                         const uint32_t lastSampleLeft(sampleSize - 2ull + TOTAL_SAMPLE_DATA_READ_SIZE);
 
@@ -956,6 +963,7 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                 uint32_t format(sampleType == sf2cute::SFSampleLink::kMonoSample ? E4SampleVariables::EOS_MONO_SAMPLE
                                                                     : E4SampleVariables::EOS_STEREO_SAMPLE);
 
+                                                                bool isReleasing(false);
                                                                 const auto& mode(sampleModes[static_cast<uint8_t>(sampleIndex)]);
                                                                 if (mode == TSF_LOOPMODE_CONTINUOUS)
                                                                 {
@@ -964,11 +972,16 @@ bool BankConverter::ConvertSF2ToE4B(const std::filesystem::path& bank, const std
                                                                 else if (mode == TSF_LOOPMODE_SUSTAIN)
                                                                 {
                                                                     format |= E4SampleVariables::SAMPLE_RELEASE_FLAG;
+                                                                    isReleasing = true;
                                                                 }
                                                                 else if (mode == TSF_LOOPMODE_CONTINUOUS_SUSTAIN)
                                                                 {
                                                                     format |= E4SampleVariables::SAMPLE_RELEASE_FLAG | E4SampleVariables::SAMPLE_LOOP_FLAG;
+                                                                    isReleasing = true;
                                                                 }
+
+                                                                // Apply 'release' as a default
+                                                                if(!isReleasing) { format |= E4SampleVariables::SAMPLE_RELEASE_FLAG; }
                                                                 
                                                                 if(sampleType == sf2cute::SFSampleLink::kMonoSample)
                                                                 {
@@ -1104,7 +1117,7 @@ std::string BankConverter::ConvertNameToSFName(const std::string_view& name) con
 
 void BankConverter::InterleaveSamples(const int16_t* leftChannel, const int16_t* rightChannel, int16_t* outStereo, const size_t sampleNum) const
 {
-    for (auto i(0); i < sampleNum; ++i)
+    for (size_t i(0); i < sampleNum; ++i)
     {
         outStereo[i * 2] = leftChannel[i];
         outStereo[i * 2 + 1] = rightChannel[i];

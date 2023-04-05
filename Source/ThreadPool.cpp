@@ -1,6 +1,6 @@
 #include "Header/ThreadPool.h"
 
-void ThreadPool::initialize(const unsigned int numThreads)
+void ThreadPool::initialize(const uint32_t numThreads)
 {
 	m_prevNumThreads = numThreads;
 	m_workers.resize(numThreads);
@@ -15,12 +15,10 @@ void ThreadPool::initialize(const unsigned int numThreads)
 				if (!m_isEnabled && m_tasks.empty()) { break; }
 
 				const auto task(std::move(m_tasks.front()));
+				task();
+				
 				m_tasks.pop();
 				uLock.unlock();
-
-				++m_tasksInProgress;
-				task();
-				--m_tasksInProgress;
 			}
 		});
 	}
@@ -38,7 +36,7 @@ void ThreadPool::queueFunc(std::function<void()>&& func)
 
 void ThreadPool::waitForAll() const noexcept
 {
-	while(true) { if(m_tasks.empty() && m_tasksInProgress.load() == 0) { break; } }
+	while(true) { if(m_tasks.empty()) { break; } }
 }
 
 void ThreadPool::destroyAll()

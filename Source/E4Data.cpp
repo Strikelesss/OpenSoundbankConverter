@@ -192,6 +192,10 @@ bool E4Envelope::write(BinaryWriter& writer)
 		&& writer.writeType(&m_release1Sec) && writer.writeType(&m_release1Level) && writer.writeType(&m_release2Sec) && writer.writeType(&m_release2Level);
 }
 
+E4Envelope::E4Envelope(const float attackSec, const float decaySec, const float holdSec, const float releaseSec, const float delaySec, const float sustainLevel)
+    : E4Envelope(static_cast<double>(attackSec), static_cast<double>(decaySec), static_cast<double>(holdSec),
+        static_cast<double>(releaseSec), static_cast<double>(delaySec), sustainLevel) {}
+
 E4Envelope::E4Envelope(const double attackSec, const double decaySec, const double holdSec, const double releaseSec, const double delaySec, const float sustainLevel)
 	: m_attack2Sec(VoiceDefinitions::GetByteFromSecAttack(attackSec)), m_decay1Sec(VoiceDefinitions::GetByteFromSecDecay1(holdSec)),
 	m_decay2Sec(VoiceDefinitions::GetByteFromSecDecay2(decaySec)), m_decay2Level(VoiceDefinitions::ConvertPercentToByteF(sustainLevel)),

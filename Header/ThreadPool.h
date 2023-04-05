@@ -5,21 +5,20 @@
 
 struct ThreadPool final
 {
-	explicit ThreadPool(const unsigned int numThreads) { initialize(numThreads); }
+	explicit ThreadPool(const uint32_t numThreads) { initialize(numThreads); }
 	ThreadPool(ThreadPool const&) = delete; ThreadPool& operator=(const ThreadPool&) = delete;
 	~ThreadPool() noexcept { waitForAll(); destroyAll(); }
 
-	void initialize(unsigned int numThreads);
+	void initialize(uint32_t numThreads);
 	void queueFunc(std::function<void()>&& func);
 	void waitForAll() const noexcept;
 	void destroyAll();
-	int GetNumTasks() const { return m_tasksInProgress.load(); }
+	size_t GetNumTasks() const { return m_tasks.size(); }
 private:
     std::condition_variable m_condition;
 	std::vector<std::thread> m_workers{};
 	std::queue< std::function<void()> > m_tasks{};
 	std::mutex m_queueMutex;
-	std::atomic<int> m_tasksInProgress = 0;
-	unsigned int m_prevNumThreads = 0u;
+	uint32_t m_prevNumThreads = 0u;
 	bool m_isEnabled = true;
 };
