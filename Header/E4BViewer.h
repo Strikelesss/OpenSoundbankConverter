@@ -10,14 +10,7 @@
 struct ImVec2;
 
 constexpr uint32_t MAX_FILES = 100;
-
-constexpr bool ENABLE_TEMP_SETTINGS =
-#ifdef _DEBUG
-    true
-#else
-    false
-#endif
-    ;
+constexpr bool ENABLE_TEMP_SETTINGS = true;
 
 namespace E4BViewer
 {

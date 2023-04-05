@@ -35,20 +35,34 @@ bool E4BViewer::CreateResources()
 #ifdef _DEBUG
 	    D3D11_CREATE_DEVICE_DEBUG
 #else
-	    D3D11_CREATE_DEVICE_DEBUG
+	    0u
 #endif
 	    );
 	
 	D3D_FEATURE_LEVEL featureLevel(D3D_FEATURE_LEVEL_10_0);
-	constexpr std::array featureLevelArray{D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0,};
-	if (D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags,
-	    featureLevelArray.data(), 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
-		m_device.GetAddressOf(), &featureLevel, m_deviceContext.GetAddressOf()) != S_OK) { return false; }
+	constexpr std::array featureLevelArray{D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0};
+    auto hr(D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags,
+        featureLevelArray.data(), 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
+        m_device.GetAddressOf(), &featureLevel, m_deviceContext.GetAddressOf()));
+    
+    assert(SUCCEEDED(hr));
+	if (FAILED(hr))
+	{
+	    // Attempt to create using WARP:
+	    hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags,
+         featureLevelArray.data(), 2u, D3D11_SDK_VERSION, &sd, m_swapchain.GetAddressOf(),
+            m_device.GetAddressOf(), &featureLevel, m_deviceContext.GetAddressOf());
+
+	    assert(SUCCEEDED(hr));
+	    if(FAILED(hr)) { return false; }
+	}
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> pBackBuffer(nullptr);
-	if(SUCCEEDED(m_swapchain->GetBuffer(0u, IID_PPV_ARGS(&pBackBuffer))))
+    hr = SUCCEEDED(m_swapchain->GetBuffer(0u, IID_PPV_ARGS(&pBackBuffer)));
+    assert(SUCCEEDED(hr));
+	if(SUCCEEDED(hr))
 	{
-	    const auto hr(m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv));
+	    hr= m_device->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_rtv);
 	    assert(SUCCEEDED(hr));
 	    if(FAILED(hr)) { Logger::LogMessage("CreateRenderTargetView failed!"); return false; }
 	    
@@ -116,15 +130,19 @@ int WINAPI WinMain(_In_ const HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPST
     E4BViewer::m_currentWindowSizeY = 720.f;
     
     RECT wr{0,0,static_cast<LONG>(E4BViewer::m_currentWindowSizeX),static_cast<LONG>(E4BViewer::m_currentWindowSizeY)};
-    if(!AdjustWindowRectEx(&wr, WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME, FALSE, 0)) { return false; }
+    const bool adjustWindowRet(AdjustWindowRectEx(&wr, WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME, FALSE, 0));
+    assert(adjustWindowRet);
+    if(!adjustWindowRet) { return false; }
     
     E4BViewer::m_hwnd = CreateWindowEx(0, wc.lpszClassName, E4BViewer::m_windowName.data(), (WS_VISIBLE | (WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME)),
         CW_USEDEFAULT, CW_USEDEFAULT, wr.right - wr.left, wr.bottom - wr.top, nullptr, nullptr, wc.hInstance, nullptr);
 
     if (!E4BViewer::m_hwnd) { MessageBoxA(nullptr, "Window Creation Failed!", "Error", 
         MB_ICONEXCLAMATION | MB_OK); return 0; }
-    
-    if (!E4BViewer::CreateResources())
+
+    const bool createResources(E4BViewer::CreateResources());
+    assert(createResources);
+    if (!createResources)
     {
         UnregisterClass(wc.lpszClassName, wc.hInstance);
         return 1;
