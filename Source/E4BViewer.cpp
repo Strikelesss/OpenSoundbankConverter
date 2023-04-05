@@ -1,7 +1,6 @@
 #include "Header/E4BViewer.h"
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
-#include "Header/BankConverter.h"
 #include "Header/BinaryReader.h"
 #include "Header/BinaryWriter.h"
 #include "Header/E4BFunctions.h"
@@ -268,12 +267,10 @@ void E4BViewer::DisplayConverter(const ImVec2& windowSize)
 
         ImGui::SameLine();
 
-        ImGui::Text("Banks In Progress: %d", m_threadPool.GetNumTasks());
+        ImGui::Text("Banks In Progress: %d", static_cast<int32_t>(m_threadPool.GetNumTasks()));
 
         if (ImGui::Button("Add Files"))
         {
-            constexpr auto MAX_FILES(MAX_PATH * 100);
-
             std::vector<TCHAR> szFile{};
             szFile.resize(MAX_FILES);
 
@@ -281,7 +278,7 @@ void E4BViewer::DisplayConverter(const ImVec2& windowSize)
             ofn.lStructSize = sizeof ofn;
             ofn.hwndOwner = m_hwnd;
             ofn.lpstrFile = szFile.data();
-            ofn.nMaxFile = MAX_FILES;
+            ofn.nMaxFile = MAX_PATH * MAX_FILES;
             ofn.lpstrFilter = _T("Supported Files\0*.e4b;*.sf2");
             ofn.Flags = OFN_ALLOWMULTISELECT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
 
@@ -762,10 +759,13 @@ void E4BViewer::DisplayOptions()
 
             if(ImGui::BeginTabItem("E4B"))
             {
-                ImGui::Checkbox("Correct Fine Tune (temp)", &m_converterOptions.m_useTempFineTune);
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                if constexpr(ENABLE_TEMP_SETTINGS)
                 {
-                    ImGui::SetTooltip("Corrects a fine tune issue occurring when converting Emax II to E4B via the Emulator IV.");
+                    ImGui::Checkbox("Correct Fine Tune (temp)", &m_converterOptions.m_useTempFineTune);
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    {
+                        ImGui::SetTooltip("Corrects a fine tune issue occurring when converting Emax II to E4B via the Emulator IV.");
+                    }
                 }
                 
                 ImGui::EndTabItem();

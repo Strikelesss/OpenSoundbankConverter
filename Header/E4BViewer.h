@@ -1,14 +1,23 @@
 #pragma once
 #include "E4Result.h"
+#include "BankConverter.h"
 #include "ThreadPool.h"
 #include <array>
 #include <d3d11.h>
 #include <filesystem>
 #include <wrl/client.h>
 
-#include "BankConverter.h"
-
 struct ImVec2;
+
+constexpr uint32_t MAX_FILES = 100;
+
+constexpr bool ENABLE_TEMP_SETTINGS =
+#ifdef _DEBUG
+    true
+#else
+    false
+#endif
+    ;
 
 namespace E4BViewer
 {
