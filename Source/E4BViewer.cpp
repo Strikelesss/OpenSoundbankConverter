@@ -281,7 +281,7 @@ void E4BViewer::DisplayConverter(const ImVec2& windowSize)
         if (ImGui::Button("Add Files"))
         {
             std::vector<TCHAR> szFile{};
-            szFile.resize(MAX_FILES);
+            szFile.resize(MAX_PATH * MAX_FILES);
 
             OPENFILENAME ofn{};
             ofn.lStructSize = sizeof ofn;
