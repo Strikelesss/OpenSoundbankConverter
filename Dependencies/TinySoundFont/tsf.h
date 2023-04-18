@@ -334,10 +334,10 @@ struct tsf_region
 	int freqVibLFO, vibLfoToPitch;
 
 	// Custom
-	uint8_t sampleIndex;
-	uint8_t padding1, padding2, padding3;
+	uint16_t sampleIndex;
+	uint8_t padding1, padding2;
 
-	uint32_t padding4, padding5, padding6;
+	uint32_t padding3, padding4, padding5;
 
 	std::vector<tsf_hydra_imod> modulators{};
 };
@@ -742,7 +742,7 @@ static int tsf_load_presets(tsf* res, struct tsf_hydra *hydra, unsigned int font
 								// Fixup sample positions
 								const auto sampleIndex(pigen->genAmount.wordAmount);
 								pshdr = &hydra->shdrs[sampleIndex];
-								zoneRegion.sampleIndex = static_cast<uint8_t>(sampleIndex);
+								zoneRegion.sampleIndex = sampleIndex;
 								zoneRegion.offset += pshdr->start;
 								zoneRegion.end += pshdr->end;
 								zoneRegion.loop_start += pshdr->startLoop;
@@ -994,10 +994,6 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 	{
 		//if (e) *e = TSF_INVALID_INCOMPLETE;
 	}
-	else if (fontSamples == TSF_NULL)
-	{
-		//if (e) *e = TSF_INVALID_NOSAMPLEDATA;
-	}
 	else
 	{
 		res = (tsf*)TSF_MALLOC(sizeof(tsf));
@@ -1005,11 +1001,14 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 		TSF_MEMSET(res, 0, sizeof(tsf));
 		if (!tsf_load_presets(res, &hydra, fontSampleCount)) goto out_of_memory;
 
-		res->fontSamples = fontSamples;
-		res->samplesAsShort = samplesAsShort;
-		res->shdrs = std::vector<tsf_hydra_shdr>(hydra.shdrs, std::next(hydra.shdrs, hydra.shdrNum)); // Custom
-		fontSamples = TSF_NULL; //don't free below
-		res->outSampleRate = 44100.0f;
+	    if (fontSamples != TSF_NULL)
+	    {
+	        res->fontSamples = fontSamples;
+	        res->samplesAsShort = samplesAsShort;
+	        res->shdrs = std::vector<tsf_hydra_shdr>(hydra.shdrs, std::next(hydra.shdrs, hydra.shdrNum)); // Custom
+	        fontSamples = TSF_NULL; //don't free below
+	        res->outSampleRate = 44100.0f;
+	    }
 	}
 	if (0)
 	{
