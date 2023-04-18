@@ -36,7 +36,7 @@ void ThreadPool::queueFunc(std::function<void()>&& func)
 
 void ThreadPool::waitForAll() const noexcept
 {
-	while(true) { if(m_tasks.empty()) { break; } }
+	while(!m_tasks.empty()) { }
 }
 
 void ThreadPool::destroyAll()

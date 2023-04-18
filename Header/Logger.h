@@ -6,6 +6,8 @@ namespace Logger
 {
 	inline std::vector<std::string> m_logMessages{};
 
+    void LogToPlatform(const std::string& msg);
+    
 	template<typename... Args>
 	void LogMessage(const std::string_view& msg, Args&&... args)
 	{
@@ -16,6 +18,7 @@ namespace Logger
 		// Remove the null-terminating character
 		stringBuffer.resize(newSize);
 
+	    LogToPlatform(stringBuffer);
 		m_logMessages.emplace_back(std::move(stringBuffer));
 	}
 
