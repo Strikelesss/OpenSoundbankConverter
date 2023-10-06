@@ -59,8 +59,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)Dependencies;$(SolutionDir)Dependencies/sf2cute/include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -78,8 +78,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)Dependencies;$(SolutionDir)Dependencies/sf2cute/include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -93,10 +93,64 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\file.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\file_writer.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\generator_item.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\instrument.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\instrument_zone.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\modulator.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\modulator_item.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\modulator_key.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\preset.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\preset_zone.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_ibag_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_igen_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_imod_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_inst_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_pbag_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_pgen_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_phdr_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_pmod_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_shdr_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\riff_smpl_chunk.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\sample.cpp" />
+    <ClCompile Include="Dependencies\sf2cute\src\sf2cute\zone.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ThreadPool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\file.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\generator_item.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\instrument.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\instrument_zone.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\modulator.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\modulator_item.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\modulator_key.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\preset.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\preset_zone.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\sample.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\types.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\version.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\include\sf2cute\zone.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\byteio.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\file_writer.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_ibag_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_igen_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_imod_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_inst_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_pbag_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_pgen_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_phdr_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_pmod_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_shdr_chunk.hpp" />
+    <ClInclude Include="Dependencies\sf2cute\src\sf2cute\riff_smpl_chunk.hpp" />
+    <ClInclude Include="Dependencies\simple_e4b\include\e4b_types.hpp" />
+    <ClInclude Include="Dependencies\simple_e4b\include\simple_e4b.hpp" />
+    <ClInclude Include="Dependencies\simple_sf2\include\sf2_types.hpp" />
+    <ClInclude Include="Dependencies\simple_sf2\include\simple_sf2.hpp" />
     <ClInclude Include="include\ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
