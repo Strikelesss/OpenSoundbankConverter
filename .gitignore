@@ -37,8 +37,11 @@
 *.out
 *.app
 
+# IDE
 .idea/*
 .vs/*
+
+# User-specific
 Build/*
 Intermediate/*
 

@@ -1,0 +1,9 @@
+[submodule "Dependencies/sf2cute"]
+	path = Dependencies/sf2cute
+	url = https://github.com/gocha/sf2cute.git
+[submodule "Dependencies/simple_sf2"]
+	path = Dependencies/simple_sf2
+	url = https://github.com/Strikelesss/simple_sf2.git
+[submodule "Dependencies/simple_e4b"]
+	path = Dependencies/simple_e4b
+	url = https://github.com/Strikelesss/simple_e4b.git
